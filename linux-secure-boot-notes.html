@@ -1,0 +1,1877 @@
+<title>信任鏈筆記</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&display=swap">
+
+<style>
+/* ── tokens ─────────────────────────────────────────────────────────── */
+:root{
+  --ground:#F4F7F5; --surface:#FFFFFF; --surface-2:#EDF2EE;
+  --ink:#16211F; --ink-soft:#55635F; --ink-faint:#8A968F;
+  --rule:#D9E0DB; --rule-soft:#E7ECE8;
+  --accent:#0F6E63; --accent-soft:#D7E8E4; --accent-ink:#0B554C;
+  --alert:#A8341F; --alert-soft:#F3DFDA;
+  --code-bg:#EBF0EC; --code-ink:#1D2E2A;
+  --shadow:0 1px 2px rgba(22,33,31,.05), 0 8px 24px -18px rgba(22,33,31,.35);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0D1513; --surface:#141E1B; --surface-2:#19241F;
+    --ink:#E4EAE6; --ink-soft:#95A39D; --ink-faint:#6D7C76;
+    --rule:#26332E; --rule-soft:#1D2926;
+    --accent:#5FC7B4; --accent-soft:#173630; --accent-ink:#8FDBCC;
+    --alert:#E8886F; --alert-soft:#3A211B;
+    --code-bg:#101A17; --code-ink:#CFDAD5;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -18px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0D1513; --surface:#141E1B; --surface-2:#19241F;
+  --ink:#E4EAE6; --ink-soft:#95A39D; --ink-faint:#6D7C76;
+  --rule:#26332E; --rule-soft:#1D2926;
+  --accent:#5FC7B4; --accent-soft:#173630; --accent-ink:#8FDBCC;
+  --alert:#E8886F; --alert-soft:#3A211B;
+  --code-bg:#101A17; --code-ink:#CFDAD5;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -18px rgba(0,0,0,.8);
+}
+
+/* ── type stacks: latin from Plex, CJK from the system ──────────────── */
+:root{
+  --cjk:"PingFang TC","Noto Sans CJK TC","Noto Sans TC","Microsoft JhengHei","Hiragino Sans GB";
+  --f-body:"IBM Plex Serif",var(--cjk),Georgia,serif;
+  --f-head:"IBM Plex Sans Condensed",var(--cjk),"Helvetica Neue",Arial,sans-serif;
+  --f-mono:"IBM Plex Mono",var(--cjk),ui-monospace,Menlo,Consolas,monospace;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:var(--f-body); font-size:17px; line-height:1.78;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ── shell ──────────────────────────────────────────────────────────── */
+.shell{max-width:1240px; margin:0 auto; padding:0 24px 96px;}
+.cols{display:grid; grid-template-columns:236px minmax(0,1fr); gap:56px; align-items:start;}
+
+/* ── masthead ───────────────────────────────────────────────────────── */
+.mast{padding:56px 0 32px; border-bottom:1px solid var(--rule);}
+.eyebrow{
+  font-family:var(--f-mono); font-size:11.5px; font-weight:500;
+  letter-spacing:.18em; text-transform:uppercase; color:var(--accent);
+  margin:0 0 14px;
+}
+.mast h1{
+  font-family:var(--f-head); font-weight:700; font-size:clamp(30px,4.6vw,50px);
+  line-height:1.1; letter-spacing:-.015em; margin:0; text-wrap:balance;
+}
+.mast .sub{
+  font-size:15px; color:var(--ink-soft); margin:14px 0 0; max-width:60ch;
+}
+.mast .sub em{font-style:italic;}
+.meta{
+  display:flex; flex-wrap:wrap; gap:8px 10px; margin:22px 0 0;
+  font-family:var(--f-mono); font-size:11.5px; letter-spacing:.03em;
+}
+.meta span{
+  padding:4px 10px; border:1px solid var(--rule); border-radius:2px;
+  color:var(--ink-soft); background:var(--surface);
+}
+
+/* ── the chain strip: the page's one flourish ───────────────────────── */
+.chain{
+  margin:34px 0 0; padding:20px 22px; background:var(--surface);
+  border:1px solid var(--rule); border-radius:3px; box-shadow:var(--shadow);
+  overflow-x:auto;
+}
+.chain-cap{
+  font-family:var(--f-mono); font-size:10.5px; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--ink-faint); margin:0 0 14px;
+}
+.chain-row{display:flex; align-items:stretch; gap:0; min-width:640px;}
+.link{
+  flex:1; padding:11px 12px 12px; border:1px solid var(--accent);
+  border-radius:2px; background:var(--accent-soft);
+  display:flex; flex-direction:column; gap:3px;
+}
+.link b{
+  font-family:var(--f-head); font-weight:700; font-size:14px;
+  letter-spacing:.01em; color:var(--accent-ink); line-height:1.25;
+}
+.link i{
+  font-style:normal; font-family:var(--f-mono); font-size:10.5px;
+  color:var(--ink-soft); line-height:1.4;
+}
+.link.broken{
+  border-style:dashed; border-color:var(--alert); background:var(--alert-soft);
+}
+.link.broken b{color:var(--alert);}
+.arr{
+  flex:0 0 30px; display:grid; place-items:center;
+  font-family:var(--f-mono); font-size:13px; color:var(--ink-faint);
+}
+.chain-note{
+  margin:13px 0 0; font-family:var(--f-mono); font-size:11px;
+  color:var(--ink-soft); line-height:1.6;
+}
+.chain-note b{color:var(--alert); font-weight:500;}
+
+/* ── sidebar nav ────────────────────────────────────────────────────── */
+.rail{position:sticky; top:0; max-height:100vh; overflow-y:auto; padding:40px 0 40px;}
+.rail-cap{
+  font-family:var(--f-mono); font-size:10.5px; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--ink-faint);
+  padding-bottom:10px; margin-bottom:10px; border-bottom:1px solid var(--rule);
+}
+.nav-part{
+  font-family:var(--f-head); font-weight:700; font-size:12px;
+  letter-spacing:.05em; color:var(--ink); margin:20px 0 8px;
+}
+.nav-part:first-of-type{margin-top:4px;}
+.nav-link{
+  display:flex; gap:9px; align-items:baseline; text-decoration:none;
+  color:var(--ink-soft); padding:4px 8px 4px 0; border-left:2px solid transparent;
+  padding-left:10px; margin-left:-12px; line-height:1.45;
+}
+.nav-mark{
+  font-family:var(--f-mono); font-size:11px; color:var(--ink-faint);
+  flex:0 0 26px; font-variant-numeric:tabular-nums;
+}
+.nav-text{font-family:var(--f-head); font-weight:600; font-size:13.5px;}
+.nav-link:hover{color:var(--ink); border-left-color:var(--rule);}
+.nav-link.on{color:var(--accent); border-left-color:var(--accent);}
+.nav-link.on .nav-mark{color:var(--accent);}
+.nav-link:focus-visible, a:focus-visible{
+  outline:2px solid var(--accent); outline-offset:3px; border-radius:2px;
+}
+
+/* ── article ────────────────────────────────────────────────────────── */
+.doc{padding:40px 0 0; max-width:70ch;}
+.doc>*+*{margin-top:1.05em;}
+.doc p{margin:0;}
+.doc a{color:var(--accent-ink); text-underline-offset:2px;}
+
+h1.part{
+  font-family:var(--f-head); font-weight:700; font-size:13px;
+  letter-spacing:.16em; text-transform:uppercase; color:var(--accent);
+  margin:76px 0 0; padding-bottom:12px; border-bottom:2px solid var(--accent);
+}
+h1.part+*{margin-top:34px;}
+
+.doc h2{
+  font-family:var(--f-head); font-weight:700; font-size:clamp(23px,3vw,30px);
+  line-height:1.2; letter-spacing:-.01em; margin:62px 0 0;
+  display:flex; gap:14px; align-items:baseline; text-wrap:balance;
+  scroll-margin-top:20px;
+}
+.sec-mark{
+  font-family:var(--f-mono); font-size:13px; font-weight:500; color:var(--accent);
+  flex:0 0 auto; font-variant-numeric:tabular-nums; letter-spacing:0;
+}
+.doc h2+*{margin-top:22px;}
+
+.doc h3{
+  font-family:var(--f-head); font-weight:700; font-size:16.5px;
+  letter-spacing:.02em; color:var(--ink); margin:38px 0 0;
+}
+.doc h3.h3-key{color:var(--accent);}
+.doc h3+*{margin-top:14px;}
+
+.doc ul,.doc ol{margin:0; padding-left:1.35em;}
+.doc li+li{margin-top:.42em;}
+.doc li>ul,.doc li>ol{margin-top:.42em;}
+.doc strong{font-weight:600;}
+
+hr{border:0; border-top:1px solid var(--rule-soft); margin:44px 0 0;}
+
+/* ── code ───────────────────────────────────────────────────────────── */
+code{
+  font-family:var(--f-mono); font-size:.855em; background:var(--code-bg);
+  color:var(--code-ink); padding:.12em .38em; border-radius:2px;
+}
+pre{
+  margin:0; background:var(--code-bg); border:1px solid var(--rule-soft);
+  border-radius:3px; padding:15px 17px; overflow-x:auto; line-height:1.6;
+}
+pre code{background:none; padding:0; font-size:12.9px;}
+
+/* ── tables ─────────────────────────────────────────────────────────── */
+.table-wrap{overflow-x:auto; border:1px solid var(--rule); border-radius:3px; background:var(--surface);}
+table{border-collapse:collapse; width:100%; font-size:14.5px; line-height:1.6;}
+th,td{
+  padding:9px 14px; text-align:left; vertical-align:top;
+  border-bottom:1px solid var(--rule-soft);
+}
+th{
+  font-family:var(--f-head); font-weight:700; font-size:12.5px;
+  letter-spacing:.05em; text-transform:uppercase; color:var(--ink-soft);
+  background:var(--surface-2); border-bottom:1px solid var(--rule); white-space:nowrap;
+}
+tr:last-child td{border-bottom:0;}
+td code{font-size:.9em;}
+
+/* ── callouts ───────────────────────────────────────────────────────── */
+blockquote.cal{
+  margin:0; padding:13px 18px; border-left:3px solid var(--rule);
+  background:var(--surface); border-radius:0 3px 3px 0; font-size:15.5px;
+}
+blockquote.cal>*+*{margin-top:.7em;}
+blockquote.cal p{margin:0;}
+.cal-key{border-left-color:var(--accent); background:var(--accent-soft);}
+.cal-warn{border-left-color:var(--alert); background:var(--alert-soft);}
+.cal-gap{border-left-color:var(--ink-faint); background:var(--surface-2); color:var(--ink-soft);}
+.cal-tip,.cal-note{border-left-color:var(--accent); background:var(--surface-2);}
+.cal-plain{border-left-color:var(--rule); background:var(--surface-2);}
+
+/* ── page reference chips ───────────────────────────────────────────── */
+p.pageref{
+  font-family:var(--f-mono); font-size:11.5px; letter-spacing:.04em;
+  color:var(--ink-faint); margin-top:26px; padding-top:12px;
+  border-top:1px dashed var(--rule);
+}
+p.pageref span{margin-right:6px;}
+
+/* ── closing line gets weight ───────────────────────────────────────── */
+.doc h2:last-of-type ~ blockquote.cal-plain{
+  font-family:var(--f-head); font-weight:600; font-size:19px; line-height:1.6;
+  border-left-color:var(--accent); background:var(--accent-soft); color:var(--ink);
+}
+
+/* ── responsive ─────────────────────────────────────────────────────── */
+@media (max-width:900px){
+  .cols{grid-template-columns:1fr; gap:0;}
+  .rail{position:static; max-height:none; padding:28px 0 0; overflow:visible;}
+  .rail-inner{
+    display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:2px 18px;
+  }
+  .nav-part{grid-column:1/-1;}
+  .doc{padding-top:28px;}
+  body{font-size:16.5px;}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none !important; transition:none !important; scroll-behavior:auto !important;}
+}
+html{scroll-behavior:smooth;}
+</style>
+
+<div class="shell">
+
+  <header class="mast">
+    <p class="eyebrow">讀書筆記 · 骨幹版</p>
+    <h1>信任鏈：從 ROM code 到加密的 rootfs</h1>
+    <p class="sub">Rodolfo Giometti, <em>Secure Boot Encryption with Linux: Implementation
+    for Embedded Developers</em>（Apress, 2026）第 1、2 章與第 3 章概念部分。
+    嵌入式 ARM 平台，不是 PC 的 UEFI + shim。</p>
+    <div class="meta">
+      <span>i.MX8 / i.MX9 / STM32MP1</span>
+      <span>U-Boot · Yocto</span>
+      <span>頁碼 = 書頁（PDF = 書頁 + 20）</span>
+    </div>
+
+    <section class="chain" aria-label="信任鏈概觀">
+      <p class="chain-cap">The Chain-of-Trust ／ 一棒接一棒：驗簽 → 解密 → 執行</p>
+      <div class="chain-row">
+        <div class="link"><b>ROM code</b><i>燒死在晶片<br>Root-of-Trust</i></div>
+        <div class="arr" aria-hidden="true">→</div>
+        <div class="link"><b>SPL</b><i>初始化 DRAM</i></div>
+        <div class="arr" aria-hidden="true">→</div>
+        <div class="link"><b>U-Boot + OP-TEE</b><i>TF-A / TrustZone</i></div>
+        <div class="arr" aria-hidden="true">→</div>
+        <div class="link"><b>kernel</b><i>fitimage 裡</i></div>
+        <div class="arr" aria-hidden="true">→</div>
+        <div class="link broken"><b>rootfs</b><i>只加密，沒簽章</i></div>
+      </div>
+      <p class="chain-note"><b>破口</b>　最後一棒只靠加密鑰匙撐住。掛載完成的那一刻，
+      Secure Boot 就下班了 —— 見 §7、§8。</p>
+    </section>
+  </header>
+
+  <div class="cols">
+    <nav class="rail" aria-label="章節導覽">
+      <div class="rail-inner">
+        <p class="rail-cap">目次</p>
+<a class="nav-link" href="#s1"><span class="nav-mark">§0</span><span class="nav-text">讀這本書之前</span></a>
+<div class="nav-part">第一部分：加密的基本零件（第 1 章）</div>
+<a class="nav-link" href="#s3"><span class="nav-mark">§1</span><span class="nav-text">兩種鑰匙，別搞混</span></a>
+<a class="nav-link" href="#s4"><span class="nav-mark">§2</span><span class="nav-text">為什麼不能把鑰匙寫在指令裡</span></a>
+<a class="nav-link" href="#s5"><span class="nav-mark">§3</span><span class="nav-text">鑰匙放哪裡：kernel keyring</span></a>
+<a class="nav-link" href="#s6"><span class="nav-mark">§4</span><span class="nav-text">四種 key，安全性由低到高</span></a>
+<a class="nav-link" href="#s7"><span class="nav-mark">§5</span><span class="nav-text">磁碟加密兩條路</span></a>
+<div class="nav-part">第二部分：Secure Boot 是什麼（第 2 章）</div>
+<a class="nav-link" href="#s9"><span class="nav-mark">§6</span><span class="nav-text">信任鏈是什麼</span></a>
+<a class="nav-link" href="#s10"><span class="nav-mark">§7</span><span class="nav-text">信任鏈的破口：rootfs</span></a>
+<a class="nav-link" href="#s11"><span class="nav-mark">§8</span><span class="nav-text">Secure Boot 不做的事</span></a>
+<a class="nav-link" href="#s12"><span class="nav-mark">§9</span><span class="nav-text">開機流程，一棒一棒看</span></a>
+<a class="nav-link" href="#s13"><span class="nav-mark">§10</span><span class="nav-text">板子出廠：自家工廠 vs 代工廠</span></a>
+<a class="nav-link" href="#s14"><span class="nav-mark">§11</span><span class="nav-text">第一次開機才生出加密 rootfs</span></a>
+<a class="nav-link" href="#s15"><span class="nav-mark">§12</span><span class="nav-text">更新系統要注意什麼</span></a>
+<div class="nav-part">第三部分：兩種分割區配置（第 3 章，只講概念）</div>
+<a class="nav-link" href="#s17"><span class="nav-mark">§13</span><span class="nav-text">Rescue 方案 vs A/B 方案</span></a>
+<a class="nav-link" href="#s18"><span class="nav-mark">§14</span><span class="nav-text">名詞小抄</span></a>
+<a class="nav-link" href="#s19"><span class="nav-mark">§15</span><span class="nav-text">書上沒講的（缺口清單）</span></a>
+<a class="nav-link" href="#s20"><span class="nav-text">一句話總結</span></a>
+      </div>
+    </nav>
+
+    <article class="doc">
+<h2 id="s1"><span class="sec-mark">§0</span><span class="sec-label">讀這本書之前</span></h2>
+<blockquote class="cal cal-warn">
+<p>⚠️ 本節不是書上的內容，是我自己加的定位說明。</p>
+</blockquote>
+<p><strong>問題</strong>：你上網搜「Linux secure boot」，找到的九成是<strong>另一件事</strong>。</p>
+<p>有兩個世界，名字一樣、觀念相通，但零件完全不同：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>PC 世界</th>
+<th>這本書（嵌入式 ARM）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>誰是第一棒</td>
+<td>UEFI firmware</td>
+<td>晶片內的 ROM code</td>
+</tr>
+<tr>
+<td>信任的根</td>
+<td>主機板裡的 UEFI 變數（PK/KEK/db）</td>
+<td>燒進晶片的 fuse</td>
+</tr>
+<tr>
+<td>誰簽的</td>
+<td>微軟簽 shim，發行版簽自己的</td>
+<td><strong>你自己簽</strong>，鑰匙你自己生</td>
+</tr>
+<tr>
+<td>中間層</td>
+<td>shim → GRUB → kernel</td>
+<td>SPL → TF-A / OP-TEE → U-Boot → kernel</td>
+</tr>
+<tr>
+<td>目標</td>
+<td>擋 bootkit，讓 Linux 能在一般 PC 開機</td>
+<td>擋複製、擋改機、關機時保護祕密</td>
+</tr>
+<tr>
+<td>典型硬體</td>
+<td>x86 PC</td>
+<td>i.MX8 / i.MX9 / STM32MP1 + Yocto</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>記住這句</strong>：這本書裡沒有微軟、沒有 shim、沒有 UEFI db。整條信任鏈的鑰匙
+都是你自己產、自己燒進晶片的。搜資料時關鍵字要用 <code>U-Boot</code>、<code>HAB</code>、<code>fitimage</code>、
+<code>CAAM</code>，而不是 <code>shim</code>、<code>MOK</code>、<code>sbsign</code>。</p>
+<p><strong>書的目標讀者</strong>是資深嵌入式開發者，所以很多名詞它直接用不解釋。
+這份筆記會把那些補上，統一收在 <a href="#14-名詞小抄">§14 名詞小抄</a>。</p>
+<hr />
+<h1 id="s2" class="part">第一部分：加密的基本零件（第 1 章）</h1>
+<p>這一整章在回答一個問題：<strong>鑰匙要放哪裡，才不會被拿走？</strong></p>
+<p>後面第 2、3 章講的每一件事，都建立在這章的答案上。所以雖然感覺離
+「開機」很遠，還是得先看。</p>
+<hr />
+<h2 id="s3"><span class="sec-mark">§1</span><span class="sec-label">兩種鑰匙，別搞混</span></h2>
+<h3>這在解決什麼問題</h3>
+<p>「安全」其實是兩件不同的事，需要兩種鑰匙：</p>
+<ul>
+<li><strong>簽章鑰匙（signature key）</strong> → 回答「這是誰發的？有沒有被改過？」</li>
+<li><strong>加密鑰匙（encryption key）</strong> → 回答「別人看不看得懂內容？」</li>
+</ul>
+<p>搞混這兩個，後面整條信任鏈都會理解錯。</p>
+<h3>怎麼運作</h3>
+<ul>
+<li><strong>簽章一定要用非對稱金鑰對</strong>（私鑰簽、公鑰驗）。
+  作法是先算檔案的雜湊（hash），再對雜湊簽名。</li>
+<li><strong>加密可以對稱也可以非對稱</strong>，但因為速度，所以
+  <strong>本書從頭到尾只用對稱加密</strong>。</li>
+</ul>
+<p>書裡固定用這兩組演算法：</p>
+<ul>
+<li>加密：<strong>AES-256-CBC</strong></li>
+<li>AES-256 = 打亂資料的主力</li>
+<li>CBC 模式 = 每個區塊先跟前一個密文 XOR 再加密。
+    為什麼要這樣？因為單純的區塊加密，「同樣的明文 → 同樣的密文」，
+    看密文就能看出重複樣式。CBC 把這個弱點補掉。</li>
+<li>簽章：<strong>ECDSA + SHA-256</strong></li>
+<li>ECDSA 基於橢圓曲線，比 RSA 金鑰更短、更有效率</li>
+<li>SHA-256 產生固定 256 bit 的雜湊。改一個 bit，輸出整個變掉</li>
+</ul>
+<h3>小例子（OpenSSL）</h3>
+<pre><code class="language-bash"># 加密
+echo &quot;Very secret message&quot; | openssl enc -e -aes-256-cbc -K &lt;key&gt; -iv &lt;iv&gt; &gt; secret.enc
+# 雜湊
+openssl dgst -sha256 /tmp/id.txt
+# 產亂數
+openssl rand 32 | od -tx1
+</code></pre>
+<h3>名詞</h3>
+<ul>
+<li><strong>非對稱 / 對稱</strong>：非對稱有兩把（公鑰、私鑰）；對稱只有一把，加解密同一把</li>
+<li><strong>IV（initial vector）</strong>：CBC 的起始亂數，讓同樣的明文每次產出不同密文</li>
+</ul>
+<p class="pageref"><span>📖</span>書頁 1–5</p>
+<hr />
+<h2 id="s4"><span class="sec-mark">§2</span><span class="sec-label">為什麼不能把鑰匙寫在指令裡</span></h2>
+<h3>這在解決什麼問題</h3>
+<p>看回 §1 那三行指令，有個致命問題：</p>
+<pre><code class="language-bash">openssl enc -e -aes-256-cbc -K 0123456789abcdef...
+                            ^^^^^^^^^^^^^^^^^^^^^^
+                            鑰匙就這樣裸在命令列上
+</code></pre>
+<p>任何有 root 權限的行程都看得到。在嵌入式裝置上，這等於沒有保護——
+攻擊者拿到 root 就拿到你所有的鑰匙。</p>
+<p><strong>這一整本書，本質上就是在解這個問題</strong>：怎麼讓「就算有 root 也讀不到鑰匙」。</p>
+<h3>怎麼運作：Linux Crypto API</h3>
+<p>答案的第一步：<strong>把加解密的動作搬進 kernel</strong>。使用者空間只說「幫我用第 N 號
+鑰匙加密這段資料」，鑰匙本身從頭到尾不出 kernel。</p>
+<ul>
+<li>kernel 內建一整套加密演算法，可以用 <code>cat /proc/crypto</code> 看</li>
+<li>同一個演算法（例如 <code>cbc(aes)</code>）可能有<strong>多個實作</strong>：純軟體的、
+  CPU 指令加速的（<code>cbc-aes-ce</code>）、專用硬體做的（<code>cbc-aes-caam</code>）</li>
+<li>每個實作有 <strong>priority</strong>。你要 <code>cbc(aes)</code>，kernel 挑 priority 最高的那個
+  （同分就隨便挑一個）。想指定就直接寫 driver 名字（<code>cbc-aes-ce</code>）</li>
+<li>使用者空間透過 <strong>AF_ALG socket</strong> 跟這套東西講話：
+  <code>socket(AF_ALG)</code> → <code>bind()</code> 指定演算法 → <code>setsockopt(ALG_SET_KEY)</code> 設鑰匙
+  → <code>sendmsg()</code> 送資料</li>
+</ul>
+<h3>⚠️ 一個現實的取捨</h3>
+<p>走 AF_ALG 要做好幾次系統呼叫，<strong>比純使用者空間的 OpenSSL 慢</strong>。
+書上有做 1GB 檔案的計時比較（<code>openssl enc</code> vs <code>openssl enc -engine afalg</code>）。</p>
+<blockquote class="cal cal-gap">
+<p>📌 書上列出了測量指令，但 PDF 抽出的文字裡實際秒數被切掉了，
+所以<strong>我沒辦法引用具體數字</strong>。要看的話翻書頁 13–14。</p>
+</blockquote>
+<h3>工具：crypto-afalg</h3>
+<p>書作者用的工具，指令跟 openssl 幾乎一樣，但<strong>走 kernel crypto API + keyring</strong>。
+之後所有需要「用 kernel 裡的鑰匙做事」的地方都是它。</p>
+<p>如果它報 <code>socket(AF_ALG): Address family not supported</code>，檢查 kernel 設定：</p>
+<pre><code>CONFIG_CRYPTO_USER=y
+CONFIG_CRYPTO_USER_API=y
+CONFIG_CRYPTO_USER_API_HASH=y
+CONFIG_CRYPTO_USER_API_SKCIPHER=y
+</code></pre>
+<h3>埋一個伏筆</h3>
+<p>在 i.MX 的 <code>/proc/crypto</code> 裡，CAAM 會提供<strong>兩個</strong> AES-ECB 實作：
+<code>ecb(aes)</code> 和 <code>tk(ecb(aes))</code>。同一個演算法，但<strong>吃不同種類的鑰匙</strong>。
+<code>tk</code> = trusted key。這個差別到 §4、§5 才會完全講清楚。</p>
+<p class="pageref"><span>📖</span>書頁 5–18</p>
+<hr />
+<h2 id="s5"><span class="sec-mark">§3</span><span class="sec-label">鑰匙放哪裡：kernel keyring</span></h2>
+<h3>這在解決什麼問題</h3>
+<p>鑰匙要待在 kernel 裡，那 kernel 得有個地方放它們、有辦法管它們。
+這就是 <strong>Linux Key-Management Facility</strong>（也叫 Kernel Key Retention Service
+或就叫 keyring）。</p>
+<h3>怎麼運作</h3>
+<p>用檔案系統來類比就很清楚：</p>
+<ul>
+<li><strong>key</strong> = 檔案</li>
+<li><strong>keyring</strong> = 資料夾（實際上 keyring 本身也是一種 key，只是它的內容是一串 key）</li>
+</ul>
+<p>工具是 <code>keyctl</code>。兩個常用的特殊 keyring 代號：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>代號</th>
+<th>名字</th>
+<th>生命週期</th>
+<th>比喻</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>@s</code></td>
+<td>session keyring</td>
+<td>登入時建立，登出就沒</td>
+<td>今天出門帶的錢包</td>
+</tr>
+<tr>
+<td><code>@u</code></td>
+<td>user keyring</td>
+<td>綁 UID，跨登入 session 還在</td>
+<td>銀行保險箱</td>
+</tr>
+</tbody>
+</table></div>
+<p>常跑的服務、cron job 要用的長期鑰匙 → <code>@u</code>。
+臨時的 → <code>@s</code>。</p>
+<h3>讀 <code>keyctl show</code> 的輸出</h3>
+<pre><code>886145736 --alswrv  1000 1000  keyring: _uid.1000
+311176563 --alswrv  1000 1000  user: userkey
+^^^^^^^^^ ^^^^^^^^  ^^^^ ^^^^  ^^^^  ^^^^^^^
+序號      權限      UID  GID   類型  描述/名字
+</code></pre>
+<p>權限字母：</p>
+<ul>
+<li><code>v</code> view — 可以看類型、描述這些屬性</li>
+<li><code>r</code> read — 可以讀出<strong>內容本身</strong>（payload）</li>
+<li><code>w</code> write — 可以改內容</li>
+<li><code>s</code> search — 搜尋 keyring 時找得到它</li>
+<li><code>l</code> link — 可以被連到別的 keyring</li>
+<li><code>a</code> alter — 可以改它的屬性（過期時間、權限）。算管理權限</li>
+</ul>
+<blockquote class="cal cal-gap">
+<p>📌 書上明說 keyring 本身「不在本書詳細講解範圍」。想深入看
+kernel 原始碼的 <code>Documentation/security/keys/</code>。</p>
+</blockquote>
+<p class="pageref"><span>📖</span>書頁 18–21</p>
+<hr />
+<h2 id="s6"><span class="sec-mark">§4</span><span class="sec-label">四種 key，安全性由低到高</span></h2>
+<h3>這在解決什麼問題</h3>
+<p>「鑰匙放 kernel」聽起來安全，但還要問三個問題：</p>
+<ol>
+<li>鑰匙在 kernel 裡是<strong>明文還是加密</strong>的？</li>
+<li><strong>使用者空間讀不讀得到</strong>？</li>
+<li><strong>重開機還在不在</strong>？</li>
+</ol>
+<p>四種 key 就是這三題的不同答案組合。</p>
+<h3>分類總表</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>種類</th>
+<th>kernel 裡是</th>
+<th>使用者空間</th>
+<th>重開機後</th>
+<th>靠什麼保護</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>user</strong></td>
+<td>明文</td>
+<td><strong>讀得到</strong></td>
+<td>沒了</td>
+<td>幾乎沒有</td>
+</tr>
+<tr>
+<td><strong>logon</strong></td>
+<td>明文</td>
+<td><strong>讀不到</strong></td>
+<td>沒了</td>
+<td>kernel 拒絕讀</td>
+</tr>
+<tr>
+<td><strong>trusted</strong></td>
+<td>明文</td>
+<td>只拿得到封好的 blob</td>
+<td><strong>還在</strong>（存 blob）</td>
+<td>硬體信任源</td>
+</tr>
+<tr>
+<td><strong>encrypted</strong></td>
+<td>加密</td>
+<td>只拿得到封好的 blob</td>
+<td><strong>還在</strong>（存 blob）</td>
+<td>另一把 master key</td>
+</tr>
+<tr>
+<td><strong>CAAM（廠商專屬）</strong></td>
+<td><strong>封好的</strong></td>
+<td>封好的</td>
+<td><strong>還在</strong></td>
+<td>CAAM 硬體本身</td>
+</tr>
+</tbody>
+</table></div>
+<h3>4.1 明文 key：user 與 logon</h3>
+<p>書上把這兩種叫「plain text key」，因為它們在 kernel 裡是<strong>沒加密</strong>的。
+（註：這是作者自己的分類用語，kernel 文件就叫它們 user 和 logon。）</p>
+<p><strong>user key</strong>：內容隨便你放，使用者空間可以建、可以改、<strong>可以讀</strong>。</p>
+<pre><code class="language-bash">keyctl add user userkey &quot;key_data&quot; @u
+# padd 版本從 stdin 讀，等價
+echo -n &quot;key_data&quot; | keyctl padd user userkey @u
+</code></pre>
+<p><strong>logon key</strong>：關鍵差別 —— <strong>使用者空間永遠讀不出來</strong>。</p>
+<pre><code class="language-bash">echo -n &quot;key_data&quot; | keyctl padd logon logonkey: @u
+keyctl pipe 779318636
+# → keyctl_read_alloc: Operation not supported
+</code></pre>
+<p>而且<strong>就算你把 read 權限加回去，還是讀不到</strong>：</p>
+<pre><code class="language-bash">keyctl setperm 779318636 0x003f0000   # 全開
+keyctl pipe 779318636
+# → 還是 Operation not supported
+</code></pre>
+<p>這不是權限問題，是 key 的<strong>類型</strong>本身就不支援讀取。</p>
+<blockquote class="cal cal-warn">
+<p>⚠️ <strong>logon key 的名字必須有冒號</strong>，前面要有一段非空字串當「子類別」。
+寫 <code>logonkey:</code> 或 <code>logonkey:testing</code> 都行，但不能只寫 <code>logonkey</code>。
+這個冒號之後在 dm-crypt 的參數裡還會再出現一次（§5），別漏掉。</p>
+</blockquote>
+<p><strong>實際用法</strong>：把鑰匙塞進 logon key，之後就再也不用在命令列出現鑰匙了。</p>
+<pre><code class="language-bash"># 把 hex 字串轉成 binary
+echo 0123...cdef | xxd -r -p &gt; /tmp/key.bin
+# 放進 logon key
+keyctl padd logon cypher: @s &lt; /tmp/key.bin
+# 用它解密（鑰匙不出現在指令裡）
+cat /tmp/secret.enc | crypto-afalg decrypt aes-256-cbc -k cypher:
+</code></pre>
+<p>從這一刻到重開機為止，這把鑰匙只有 kernel 知道。</p>
+<blockquote class="cal cal-plain">
+<p>用 key 名字（而不是序號）指定，需要 kernel <strong>6.2 以上</strong>
+（要有 <code>ALG_SET_KEY_BY_KEY_SERIAL</code>）。</p>
+</blockquote>
+<p><strong>缺點</strong>：重開機就沒了。這是下一節要解決的。</p>
+<h3>4.2 封起來的 key：trusted 與 encrypted</h3>
+<p>「<strong>封（seal / wrap）</strong>」是這本書最重要的一個動作，先講清楚：</p>
+<blockquote class="cal cal-plain">
+<p><strong>封</strong> = 把鑰匙用另一個東西加密成一坨看不懂的資料（blob）。
+這坨 blob 可以隨便存在磁碟上，因為只有「封它的那個東西」能解開。</p>
+</blockquote>
+<p>兩種 key 的差別就在「封它的是誰」：</p>
+<ul>
+<li><strong>trusted key</strong>：靠<strong>硬體信任源</strong>封。可用的信任源有：</li>
+<li><strong>TPM</strong> — 專用安全晶片。亂數品質看廠商</li>
+<li><strong>TEE / OP-TEE</strong> — 基於 ARM TrustZone 的可信執行環境</li>
+<li><strong>CAAM</strong> — NXP i.MX 上的加密硬體，有硬體亂數產生器</li>
+<li><strong>DCP</strong> — 部分 i.MX 的加密加速器，<strong>沒有自己的亂數源</strong>，用 kernel 預設的</li>
+</ul>
+<p>對應的 kernel 設定：<code>CONFIG_TRUSTED_KEYS_TPM</code> / <code>_TEE</code> / <code>_CAAM</code> / <code>_DCP</code>。
+  kernel 挑第一個可用的，也可以用 kernel command line 指定
+  <code>trusted.source=tpm</code>（或 <code>tee</code> 等）。亂數源可以用 <code>trusted.rng=kernel</code> 蓋掉。</p>
+<ul>
+<li><strong>encrypted key</strong>：靠<strong>另一把 trusted key</strong>（叫 <strong>master key</strong> 或 <strong>KMK</strong>，
+  Kernel Master Key）封。因為不用碰硬體，所以<strong>比較快</strong>。</li>
+</ul>
+<p>還有一個差別：trusted key <strong>一定是亂數</strong>；encrypted key 可以是亂數，
+也可以由使用者指定內容（需要 <code>CONFIG_USER_DECRYPTED_DATA</code>，否則會噴
+<code>add_key: Invalid argument</code>）。</p>
+<h3>trusted key 怎麼運作（重要）</h3>
+<pre><code>建立：keyctl add trusted trustedkey &quot;new 32&quot; @s
+      → 信任源產亂數 → 鑰匙以【明文】放在 kernel 裡
+
+匯出：keyctl pipe &lt;serial&gt; &gt; trustedkey.blob
+      → 鑰匙被信任源封成 blob → 存到磁碟
+
+重開機
+
+還原：keyctl add trusted trustedkey &quot;load $(cat trustedkey.blob)&quot; @s
+      → 信任源解開 blob → 鑰匙又以【明文】回到 kernel
+</code></pre>
+<p>（書上 Figure 1-1）</p>
+<p><strong>這就是「跨重開機還在」的作法</strong>：鑰匙本身沒存，存的是封起來的 blob。</p>
+<blockquote class="cal cal-warn">
+<p>⚠️ <strong>重開機前一定要先把 blob 存到非揮發性儲存</strong>，不然鑰匙就真的沒了。</p>
+</blockquote>
+<p><strong>兩層疊起來用</strong>（書上的實際流程）：</p>
+<pre><code class="language-bash"># 1. 先載入 master key（trusted）
+keyctl add trusted trustedkey &quot;load $(cat trustedkey.blob)&quot; @s
+# 2. 再載入被它封的 encrypted key
+keyctl add encrypted encryptedkey &quot;load $(cat encryptedkey.blob)&quot; @s
+# 3. 用它解密，鑰匙全程沒進使用者空間
+crypto-afalg decrypt aes-256-cbc -k encryptedkey &lt; message.enc
+</code></pre>
+<blockquote class="cal cal-key">
+<p>🔒 因為 trusted key 綁硬體，<strong>加密的訊息只能在同一台機器上解開</strong>。
+這正是 §0 講的「防複製」怎麼做到的。</p>
+</blockquote>
+<h3>4.3 廠商專屬 key：CAAM</h3>
+<p><strong>CAAM</strong> = Cryptographic Acceleration and Assurance Module，
+NXP 很多 i.MX CPU 上的加密硬體。工具是 NXP 的 <code>caam-keygen</code>
+（<a href="https://github.com/nxp-imx/keyctl_caam">https://github.com/nxp-imx/keyctl_caam</a>）。</p>
+<pre><code class="language-bash">caam-keygen create caamkey ecb -s 32   # 產一把 256-bit 的鑰匙
+</code></pre>
+<h3 class="h3-key">🎯 CAAM key 和 trusted key 的關鍵差別</h3>
+<p>這是第 1 章最重要的一句話，<strong>書上書頁 46 用驚嘆號強調</strong>：</p>
+<blockquote class="cal cal-plain">
+<p><strong>trusted key</strong>：明文的鑰匙<strong>在 kernel 裡</strong>，封起來的版本在磁碟上。
+<strong>CAAM key</strong>：明文的鑰匙<strong>在 CAAM 硬體裡</strong>，
+移到 kernel 的時候就<strong>已經是封好的</strong>了。</p>
+</blockquote>
+<p>換句話說：用 trusted key，攻破 kernel 就拿得到鑰匙明文。
+用 CAAM key，攻破 kernel 也只拿得到封好的 blob。<strong>多擋一層</strong>。</p>
+<p>（書上 Figure 1-1 vs Figure 1-2，兩張圖裡都有個叫 <code>key</code> 的變數，
+但裝的東西不一樣——這是作者特別提醒的點。）</p>
+<p class="pageref"><span>📖</span>書頁 21–47</p>
+<hr />
+<h2 id="s7"><span class="sec-mark">§5</span><span class="sec-label">磁碟加密兩條路</span></h2>
+<h3>這在解決什麼問題</h3>
+<p>前面都在講「一把鑰匙」。但實際上要保護的是<strong>整個檔案系統</strong>。
+而且必須<strong>透明</strong>——程式讀寫檔案時完全不用改，加解密由 kernel 自動做。</p>
+<p>這叫 <strong>transparent encryption</strong>：資料在磁碟上（at rest）是加密的，
+但對執行中的作業系統和程式來說看起來就是明文。</p>
+<h3>兩種作法</h3>
+<pre><code>    檔案系統層                        區塊層
+   （fscrypt / eCryptfs）           （dm-crypt）
+   ┌─────────────┐                 ┌─────────────┐
+   │ 應用程式     │                 │ 應用程式     │
+   ├─────────────┤                 ├─────────────┤
+   │ 檔案系統     │← 這層做加解密    │ 檔案系統     │
+   ├─────────────┤                 ├─────────────┤
+   │ 區塊裝置     │                 │ dm-crypt    │← 這層做加解密
+   └─────────────┘                 ├─────────────┤
+                                   │ 區塊裝置     │
+   可以只加密某些目錄                └─────────────┘
+                                   整顆一起加密
+</code></pre>
+<p>（書上 Figure 1-3）</p>
+<h3>檔案系統層（書頁 48–63）</h3>
+<p>好處是<strong>粒度細</strong>——可以只加密某幾個檔案或目錄。兩種實作方式：</p>
+<ul>
+<li><strong>stacked（疊在上面）</strong>：例如 <strong>eCryptfs</strong>（kernel module）、
+  <strong>EncFS</strong>、<strong>gocryptfs</strong>（後兩者基於 FUSE）。
+  下層檔案系統看到的是正常檔案，只是內容是密文。<blockquote class="cal cal-warn">
+<p>⚠️ 書上明說 <strong>eCryptfs 已經沒在維護，不要用在正式產品</strong>。</p>
+</blockquote>
+</li>
+<li><strong>native（檔案系統自己支援）</strong>：EXT4、F2FS、UBIFS 都支援。
+  現在比較主流，因為不用疊一層、比較省記憶體、設定也不一定要 root。</li>
+</ul>
+<p>一個實用細節：把 key 從 keyring 移除<strong>不夠</strong>，因為 kernel 會快取。
+真的要鎖上，兩個都要做：</p>
+<pre><code class="language-bash">keyctl unlink &lt;serial&gt; @s
+sync &amp;&amp; echo 3 &gt; /proc/sys/vm/drop_caches
+</code></pre>
+<h3>區塊層：dm-crypt（書頁 63–75）← 這本書用的</h3>
+<p>在<strong>區塊裝置</strong>這層做。做出一個虛擬的加密區塊裝置，然後在上面
+格式化一般的檔案系統。</p>
+<pre><code class="language-bash">dmsetup create root --table \
+  &quot;0 $SECTORS crypt aes-cbc-plain $KEYHEX 0 /dev/loop0 0&quot;
+</code></pre>
+<p>參數逐個是：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>位置</th>
+<th>值</th>
+<th>意思</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>0</code></td>
+<td>從第幾個 sector 開始加密</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>$SECTORS</code></td>
+<td>磁碟總長度（以 512-byte sector 計）</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>crypt</code></td>
+<td>target 類型，固定</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>aes-cbc-plain</code></td>
+<td>演算法 + IV 模式（見下）</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>$KEYHEX</code></td>
+<td>鑰匙</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>0</code></td>
+<td>IV 的偏移量；用 <code>-plain</code> 時固定 0</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>/dev/loop0</code></td>
+<td>底下真正的區塊裝置</td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>0</code></td>
+<td>在該裝置上的起始偏移</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>-plain</code> 的意思：<strong>用 sector 編號當 IV</strong>（32-bit little-endian，不足補零）。
+好處是同樣內容的不同 sector 加密結果不同，而且不用去磁碟上另外讀 IV，比較快。</p>
+<p>做完會出現 <code>/dev/mapper/root</code>，可以像一般裝置那樣 <code>mkfs.ext4</code>。</p>
+<h3 class="h3-key">🎯 為什麼開機訊息裡是 <code>/dev/mapper/root</code></h3>
+<p>這解答了 §9 會看到的一件事：</p>
+<pre><code>init: mounting rootfs on /dev/mapper/root...
+</code></pre>
+<p>不是 <code>/dev/mmcblk2p4</code>，是 <code>/dev/mapper/root</code>——因為中間隔了一層 dm-crypt。</p>
+<h3>用 CAAM key 做 dm-crypt（最高安全等級）</h3>
+<pre><code class="language-bash">caam-keygen create caamkey ecb -s 16
+keyctl padd logon caamkey: @s &lt; /etc/caam/caamkey
+dmsetup create root --table \
+  &quot;0 $SECTORS crypt capi:tk(cbc(aes))-plain :36:logon:caamkey: 0 /dev/loop0 0&quot;
+</code></pre>
+<p>兩處改動要注意：</p>
+<ul>
+<li><code>capi:tk(cbc(aes))-plain</code> — 要用 <strong><code>tk(...)</code></strong> 這個演算法名字
+  （tk = trusted key），kernel 才知道要用特殊方式處理這把鑰匙。
+  <strong>這就是 §2 埋的那個伏筆</strong>。</li>
+<li><code>:36:logon:caamkey:</code> — logon key 的描述前面要有非零長度的子類別字串，
+  所以<strong>最後那個冒號不能漏</strong>。<code>36</code> 是這把 key 的位元組長度。</li>
+</ul>
+<blockquote class="cal cal-gap">
+<p>📌 如果需要做<strong>預先建好的 rootfs 映像檔</strong>（產線用），可以用 <code>-t</code>
+指定一把已知的 CAAM key：<code>caam-keygen create caamkey ecb -t 0123...cdef -h</code></p>
+</blockquote>
+<p class="pageref"><span>📖</span>書頁 47–75</p>
+<hr />
+<h1 id="s8" class="part">第二部分：Secure Boot 是什麼（第 2 章）</h1>
+<hr />
+<h2 id="s9"><span class="sec-mark">§6</span><span class="sec-label">信任鏈是什麼</span></h2>
+<h3>這在解決什麼問題</h3>
+<p>Secure Boot 想解的問題：<strong>確保只有合法的軟體能在合法的硬體上跑，
+而且反過來也成立。</strong></p>
+<p>具體來說，它要防三件事：</p>
+<ol>
+<li>未授權的軟體被執行（bootloader、kernel，某種程度上還有使用者程式）</li>
+<li><strong>系統被複製</strong>——把合法軟體抓出來，灌到山寨硬體上跑</li>
+<li><strong>關機狀態下祕密被讀走</strong></li>
+</ol>
+<h3>怎麼運作：一棒接一棒</h3>
+<pre><code>ROM code ──驗──&gt; SPL ──驗──&gt; U-Boot + OP-TEE ──驗──&gt; kernel ──解密掛載──&gt; rootfs
+   ↑
+Root-of-Trust
+（無條件相信）
+</code></pre>
+<p>每一棒的動作固定是三步：<strong>驗簽章 → 解密 → 執行</strong>。</p>
+<p><strong>Root-of-Trust（信任的根）</strong> 是起點。它沒有人驗它——它的安全性
+是「假設」出來的，因為它被物理或邏輯上保護著。通常就是<strong>燒死在晶片裡的
+ROM code</strong>，改不了。</p>
+<p>ROM code 用來驗第一棒的公鑰通常放在晶片的 <strong>fuse</strong>（或其他非揮發性記憶體）裡。</p>
+<h3>每一棒的鑰匙可以不一樣</h3>
+<p>書上說：每個階段用不同的鑰匙，信任鏈<strong>更穩固</strong>；但即使每個階段都用同一組鑰匙，
+這個機制<strong>依然被認為是穩固的</strong>。</p>
+<h3>可以加上的強化：tamper detection</h3>
+<p>如果簽章無效、缺失，或<strong>硬體被動過</strong>（例如外殼被打開），
+Secure Boot 會擋下開機並通常會告警。</p>
+<blockquote class="cal cal-gap">
+<p>📌 細節在附錄 A，<strong>不在這輪筆記範圍</strong>。</p>
+</blockquote>
+<p class="pageref"><span>📖</span>書頁 79–82</p>
+<hr />
+<h2 id="s10"><span class="sec-mark">§7</span><span class="sec-label">信任鏈的破口：rootfs</span></h2>
+<h3 class="h3-key">🎯 這是全書最重要的一個「不保護」</h3>
+<p>信任鏈到 rootfs 這一棒<strong>性質變了</strong>：</p>
+<blockquote class="cal cal-plain">
+<p><strong>rootfs 只有加密，沒有簽章。</strong>
+所以最後這一棒的安全性，<strong>完全只靠加密鑰匙</strong>。</p>
+</blockquote>
+<h3>為什麼不能簽 rootfs</h3>
+<p>因為簽章的程序<strong>沒有加密那麼有效率</strong>。加密磁碟是用「單一區塊加密」
+一次做完的，簽章沒辦法這樣做。</p>
+<h3>後果</h3>
+<p>一旦加密的 rootfs 掛載完成：</p>
+<blockquote class="cal cal-plain">
+<p>從行程的角度看，它就是一個<strong>普通的、沒有加密的</strong>檔案系統。
+沒有人再檢查裡面每一支程式的有效性——<strong>包括 <code>/sbin/init</code> 本身</strong>。</p>
+</blockquote>
+<p>換句話說：信任鏈保證的是「<strong>整個檔案系統</strong>是對的」，
+不是「裡面<strong>每支程式</strong>是對的」。</p>
+<h3>書上給的補救方向</h3>
+<p><strong>Linux IMA</strong>（Integrity Measurement Architecture），
+<a href="https://sourceforge.net/p/linux-ima/wiki/Home/">https://sourceforge.net/p/linux-ima/wiki/Home/</a></p>
+<blockquote class="cal cal-gap">
+<p>📌 書上明說 <strong>IMA 不在本書涵蓋範圍</strong>。這是你之後想補強時的第一個方向。</p>
+</blockquote>
+<p class="pageref"><span>📖</span>書頁 81、96</p>
+<hr />
+<h2 id="s11"><span class="sec-mark">§8</span><span class="sec-label">Secure Boot 不做的事</span></h2>
+<h3>這在解決什麼問題</h3>
+<p>避免你對它有錯誤期待。書上花了整整一節在講這個。</p>
+<h3>Secure Boot 的工作範圍</h3>
+<blockquote class="cal cal-plain">
+<p>從開機的那一刻開始，到<strong>加密的 rootfs 掛載完成</strong>為止。
+作業系統跑起來之後，Secure Boot 就下班了。</p>
+</blockquote>
+<h3>它<strong>不</strong>保護的東西</h3>
+<ul>
+<li>❌ 病毒、勒索軟體、間諜軟體、釣魚——這些都是系統跑起來之後的事</li>
+<li>❌ DDoS、中間人攻擊、任何網路攻擊</li>
+<li>❌ <strong>執行中的 rootfs</strong>。rootfs 加密只在<strong>關機狀態</strong>有意義</li>
+</ul>
+<p>所以還是需要防火牆、還是要小心你下載執行什麼、還是要備份。</p>
+<h3>書上的比喻</h3>
+<blockquote class="cal cal-plain">
+<p>Secure Boot 是站在電腦開機流程入口的<strong>一個很專門的警衛</strong>。
+它的工作是確保只有受邀且驗證過的客人（簽過章的開機軟體）能進來。</p>
+<p><strong>它是一層地基，不是一整套安全方案。</strong></p>
+</blockquote>
+<p class="pageref"><span>📖</span>書頁 77–79</p>
+<hr />
+<h2 id="s12"><span class="sec-mark">§9</span><span class="sec-label">開機流程，一棒一棒看</span></h2>
+<h3>這在解決什麼問題</h3>
+<p>把 §6 那條抽象的鏈，對到真實開機訊息上。</p>
+<blockquote class="cal cal-note">
+<p>ℹ️ 書上 Figure 2-2 是以 <strong>ARM 系統</strong>為準（所以有 TF-A、OP-TEE
+這些 ARM 專屬的東西）。但稍作調整後，可以當成一般 Linux 開機流程的概觀。</p>
+</blockquote>
+<h3>全景</h3>
+<pre><code>上電
+ │
+ ├─ 1. ROM boot code          ← 燒死在晶片，唯一無條件安全的東西
+ │      驗簽 SPL
+ ├─ 2. SPL（prebootloader）    ← 初始化 DRAM
+ │      /  TF-A → 載入 U-Boot + OP-TEE
+ ├─ 3. U-Boot（Normal World）  ← 加上 OP-TEE（Secure World）
+ │      驗簽 + 解密 fitimage
+ ├─ 4. kernel                 ← 從 fitimage 裡出來
+ │      掛 initramfs
+ ├─ 5. initramfs 的 init      ← 解密、掛載真正的 rootfs
+ │      switch_root
+ └─ 6. 真正的 rootfs + systemd
+</code></pre>
+<h3>第 1 棒：ROM code</h3>
+<p>上電後 ROM code 先跑，做完初始化，從儲存裝置載入 bootloader
+（或 prebootloader）並執行。</p>
+<p>因為它是<strong>預先燒進 ROM 晶片</strong>的指令，改不了，
+所以<strong>它是唯一被認為安全的元件</strong>（從 Secure Boot 的角度）。</p>
+<p>其他每一個元件都必須被保護。</p>
+<h3>第 2 棒：為什麼需要 SPL</h3>
+<p><strong>因為 DRAM 剛上電時不能用。</strong></p>
+<p>現代系統用的動態記憶體（DRAM）在上電時是未初始化的原始狀態。
+CPU 沒辦法把程式載進去、也不能在裡面執行程式，
+除非先設定好 DRAM 控制器和 DRAM 晶片本身（時序、refresh rate、電壓等）。</p>
+<p>所以需要一個小小的 <strong>prebootloader</strong> 先把 DRAM（和其他必要硬體）弄好，
+之後比較大、比較複雜的程式（真正的 bootloader，有些系統甚至是 kernel 本身）
+才能被載進去執行。</p>
+<p>在這本書裡：<strong>prebootloader = U-Boot SPL</strong>（Secondary Program Loader），
+<strong>bootloader = U-Boot</strong>。</p>
+<p>（如果某個系統的 DRAM 一上電就能用，ROM code 就可以直接載 bootloader。）</p>
+<h3>第 2.5 棒：TF-A 和 OP-TEE</h3>
+<p>現代 ARM 系統在這一步還會多兩個元件：</p>
+<p><strong>TF-A</strong>（Trusted Firmware-A，也叫 ATF、ARM Trusted Firmware）
+- 給 ARMv8-A / ARMv9-A 用的關鍵韌體
+- 跑在<strong>最高權限等級</strong>，扮演 <strong>secure monitor</strong>
+- 從我們的角度看，它的主要任務是：<strong>載入 U-Boot 和（選配的）OP-TEE 並執行它們</strong>
+- 文件：<a href="https://trustedfirmware-a.readthedocs.io/">https://trustedfirmware-a.readthedocs.io/</a></p>
+<p><strong>OP-TEE</strong>（Open Portable Trusted Execution Environment）
+- 用 ARM <strong>TrustZone</strong> 技術，把<strong>一顆實體 CPU 切成兩個隔離的世界</strong>：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Secure World</th>
+<th>Normal World</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>誰在裡面</td>
+<td>OP-TEE（TEE）</td>
+<td>Linux（REE）</td>
+</tr>
+<tr>
+<td>保護</td>
+<td>硬體級保護，就算 Normal World 被攻破也安全</td>
+<td>可存取大部分系統資源</td>
+</tr>
+<tr>
+<td>能不能碰對方</td>
+<td>可以</td>
+<td><strong>不能</strong>存取或竄改 Secure World</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li>隔離靠的是：硬體強制的記憶體隔離、受保護的暫存器、
+  受控的進出點（透過 secure monitor，通常就是 TF-A 實作的）</li>
+<li>很常見的情況是 <strong>OP-TEE 跑在同一顆晶片裡的另一顆 CPU 上</strong></li>
+<li>文件：<a href="https://optee.readthedocs.io/">https://optee.readthedocs.io/</a></li>
+</ul>
+<p>在 Secure World 裡跑的程式叫 <strong>Trusted Application（TA）</strong>。</p>
+<p><strong>分工</strong>：OP-TEE 待在它的 Secure World 裡；U-Boot 在 Normal World 做設定，
+然後載入並執行 kernel，過程中<strong>需要加密幫忙時就去問 OP-TEE</strong>。</p>
+<h3>實際開機訊息：SPL 階段</h3>
+<pre><code>U-Boot SPL 2024.04-imx_...
+DDRINFO: start DRAM init          ← 這就是 SPL 在初始化 DRAM
+DDRINFO: DRAM rate 4000MTS
+DDRINFO: ddrphy calibration done
+Normal Boot
+Trying to boot from BOOTROM
+Authenticate image from DDR location 0x401fadc0...   ← 🎯 驗簽在這裡
+NOTICE:  ...                       ← NOTICE 開頭的都是 OP-TEE 印的
+</code></pre>
+<p>ROM code 驗完 SPL 之後，接著驗 U-Boot 和 OP-TEE 的映像檔。</p>
+<h3>實際開機訊息：U-Boot 階段</h3>
+<pre><code>U-Boot 2024.04-imx_...
+Model: board i.MX8MPlus iCore Plus
+Loading Environment from MMC... OK
+Hit any key to stop autoboot:
+...
+75301040 bytes read in 238 ms (301.7 MiB/s)
+Booting from mmc ...
+</code></pre>
+<h3>⚠️ 一個容易誤解的點：bootloader 可以不加密</h3>
+<p>書上的例子裡，<strong>bootloader 只有簽章，沒有加密</strong>。</p>
+<p>為什麼可以？因為：</p>
+<ul>
+<li>有簽章 → <strong>信任鏈沒有斷</strong></li>
+<li>bootloader 裡沒有敏感資訊 → 就算是明碼，那也只是 bootloader 的程式碼，
+  不是應用程式</li>
+</ul>
+<p><strong>但是</strong>（書上用警告框強調）：</p>
+<blockquote class="cal cal-plain">
+<p>如果 bootloader 裡<strong>有</strong>祕密（加密鑰匙、密碼），
+那就必須整個加密，或至少把那段關鍵資訊雜湊或封起來。
+<strong>否則信任鏈就斷了！</strong></p>
+</blockquote>
+<h3>第 3 棒：fitimage</h3>
+<p>當 U-Boot 找到有效的 <strong>fitimage</strong> 時：</p>
+<blockquote class="cal cal-plain">
+<p><strong>fitimage</strong> = 一個檔案，裡面包了 kernel image、Device Tree（DTB）、
+還有其他開機需要的資訊。</p>
+</blockquote>
+<pre><code>Booting from mmc ...
+Authenticate image from DDR location 0x40400000...   ← 🎯 又一次驗簽
+Secure boot enabled
+HAB Configuration: 0xcc, HAB State: 0x99
+No HAB Events Found!
+## Loading kernel from FIT Image at 40400000 ...
+## Loading fdt from FIT Image at 40400000 ...
+Starting kernel ...
+</code></pre>
+<p>U-Boot <strong>先驗 fitimage 的簽章，再解密它</strong>，然後執行。
+看到 <code>Starting kernel ...</code> 就代表 CPU 開始跑 Linux 的程式碼了。</p>
+<p>（<code>HAB</code> = NXP 的 High Assurance Boot。書上沒展開解釋這個名詞。）</p>
+<h3>第 4 棒：kernel command line</h3>
+<p>kernel 起來後，設定所有元件和裝置，然後做最後兩件事：
+<strong>掛載 rootfs</strong>、<strong>執行 init</strong>。</p>
+<p>bootloader 用 <strong>kernel command line</strong> 跟 kernel 交換資訊——
+想像成 bootloader 是「用一行命令列」在執行 kernel：</p>
+<pre><code>Kernel command line: console=ttymxc1,115200 device=/dev/mmcblk2
+  root=/dev/mmcblk2p4 rootwait rw initramfs_normal
+  boot_schema=a_b root_name=root_b
+</code></pre>
+<p>等同於在 U-Boot 下打：</p>
+<pre><code>uboot&gt; fitimage console=ttymxc1,115200 device=/dev/mmcblk2 \
+       root=/dev/mmcblk2p4 rootwait rw initramfs_normal \
+       boot_schema=a_b root_name=root_b
+</code></pre>
+<p>這些參數的意思在 §13 會用到（<code>boot_schema</code> 決定用哪種分割區配置）。</p>
+<blockquote class="cal cal-gap">
+<p>📌 <strong>這裡有個安全問題</strong>：U-Boot 的環境變數是<strong>明文</strong>的記憶體區域。
+書上把「怎麼保護這些資訊」放在<strong>附錄 B</strong>，<strong>不在這輪筆記範圍</strong>。</p>
+</blockquote>
+<h3>第 5 棒：initramfs 和 switch_root</h3>
+<p><strong>rootfs</strong> 是 Linux 檔案系統階層的最頂層，就是那個 <code>/</code>。
+所有其他檔案和目錄都掛在它下面。</p>
+<p>kernel 可以直接掛載儲存裝置上的 rootfs，但現代系統偏好中間多一步：</p>
+<blockquote class="cal cal-plain">
+<p><strong>initramfs</strong> = 一個小小的、暫時的、<strong>在記憶體裡</strong>的 root filesystem。
+想成一個自給自足的迷你作業系統，唯一的任務就是幫真正的作業系統起床。</p>
+</blockquote>
+<p>它可以放在儲存裝置上，但<strong>很常見的是直接包在 kernel 裡面</strong>
+（所以 fitimage 裡有它）。</p>
+<p><strong>什麼時候需要 initramfs</strong>：真正的 rootfs 不能被 kernel 直接存取的時候。
+例如 rootfs 在 RAID 上、或<strong>需要先解密</strong>、或要先更新整個 rootfs。</p>
+<p>做完該做的事之後，initramfs 裡的 init 用 <code>switch_root</code> 切過去：</p>
+<pre><code class="language-bash">exec switch_root /real_rootfs /sbin/init
+</code></pre>
+<h3 class="h3-key">🎯 兩個容易搞錯的細節</h3>
+<p><strong>(1) <code>switch_root</code> ≠ <code>chroot</code></strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th><code>switch_root</code></th>
+<th><code>chroot</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>影響範圍</td>
+<td><strong>整個 kernel 的 root filesystem</strong></td>
+<td>只有那個行程和它的子行程</td>
+</tr>
+<tr>
+<td>用途</td>
+<td>開機時從暫時 root 換到永久 root</td>
+<td>隔離環境（編譯、修復系統、daemon）</td>
+</tr>
+<tr>
+<td>舊的 root</td>
+<td><strong>遞迴刪除</strong>、搬移、隔離掉</td>
+<td>完全不動</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>switch_root</code> 會把 <code>/proc</code>、<code>/dev</code>、<code>/sys</code>、<code>/run</code> 搬到新的 root，
+把新的 root 變成系統的 root，然後啟動 init。</p>
+<p><strong>為什麼要遞迴刪掉舊的 root</strong>：
+- initramfs 佔的是 RAM，內容已經不需要了，刪掉可以回收
+- <strong>更重要</strong>：它可能藏著我們<strong>不想讓真正的 rootfs 看到的資訊</strong>（例如鑰匙）</p>
+<p><strong>(2) 為什麼一定要 <code>exec</code></strong></p>
+<p>在 shell 裡：</p>
+<ul>
+<li><code>&lt;cmd&gt;</code> → shell fork 出新行程，然後等它結束</li>
+<li><code>exec &lt;cmd&gt;</code> → <strong>shell 本身變成 <code>&lt;cmd&gt;</code></strong>。不產生新行程，
+  shell 的 PID 被 <code>&lt;cmd&gt;</code> 取代，shell 永遠不會回來</li>
+</ul>
+<p>為什麼這很關鍵？因為<strong>真正 rootfs 裡的 init 必須是 PID 1</strong>
+（正常運作的 init 就該是 PID 1）。</p>
+<h3>開機訊息：切換的那一刻</h3>
+<pre><code>init: checking rootfs on /dev/mapper/root...
+e2fsck 1.47.0 (5-Feb-2023)
+root: clean, 17913/256000 files, 228590/1024000 blocks
+init: mounting rootfs on /dev/mapper/root...
+init: entering rootfs on /dev/mapper/root...
+</code></pre>
+<p>注意 <strong><code>/dev/mapper/root</code></strong>——不是一般的 <code>/dev/sda1</code> 或 <code>/dev/mmcblk2</code>，
+而是實作 rootfs 加密的特殊區塊裝置。<strong>這就是 §5 講的 dm-crypt</strong>。</p>
+<p>接著 initramfs 的 init 被真正的 init（例子裡是 systemd）取代，開機完成。</p>
+<p class="pageref"><span>📖</span>書頁 82–96</p>
+<hr />
+<h2 id="s13"><span class="sec-mark">§10</span><span class="sec-label">板子出廠：自家工廠 vs 代工廠</span></h2>
+<h3>這在解決什麼問題</h3>
+<p>前面講的都是「系統正常運作」的狀態。但每個系統都有<strong>產線階段</strong>——
+板子剛組裝好，是一張白紙，什麼都沒有。</p>
+<p>要往裡面灌東西（叫 <strong>firmware programming</strong> 或 <strong>flashing</strong>），
+而 Secure Boot 讓這件事變複雜了。</p>
+<h3>產線要做的事</h3>
+<ol>
+<li>所有韌體映像檔必須<strong>簽好章</strong>、（最好也）<strong>加密</strong>。
+   只有不敏感的資料可以是明文或不簽</li>
+<li>把 CPU 設定成進入<strong>安全狀態</strong></li>
+<li>把簽章鑰匙和（最好還有）加密鑰匙<strong>燒進 CPU 的 fuse</strong></li>
+</ol>
+<p>這一整套最佳實務叫 <strong>SSP</strong>（Software Secure Provisioning）。</p>
+<h3>情境 A：自家工廠（書頁 98–99）</h3>
+<p>流程：</p>
+<ol>
+<li>CPU 做一般開機，透過<strong>序列埠或 USB</strong> 載入初始程式碼
+   （通常是一個特別設定的 U-Boot）</li>
+<li>初始程式碼把需要的鑰匙<strong>燒進 fuse</strong>，並檢查一切正常</li>
+<li>沒問題就把初始韌體寫進 flash，然後重開機</li>
+<li>CPU 現在以<strong>安全狀態</strong>執行，載入安全的 bootloader，信任鏈開始運作</li>
+</ol>
+<p><strong>步驟 1 可以用沒簽章的 bootloader</strong>——因為是我們自己做的，
+可以假設沒有惡意軟體。</p>
+<p><strong>⚠️ 步驟 2 比較麻煩</strong>：關鍵鑰匙會經過通訊通道。
+序列匯流排<strong>用便宜的儀器就能監聽</strong>。</p>
+<p><strong>解法：Diffie–Hellman 金鑰交換協定</strong>
+讓兩個原本互不認識的人，在不安全的通道上<strong>談出一把共用的祕密鑰匙</strong>。
+（書上 Figure 2-3）</p>
+<p><strong>這個作法幾乎所有 CPU 都能實作。真正的風險點是：
+fuse 燒錄過程中不能有惡意的軟體或硬體在偷。</strong></p>
+<h3>情境 B：代工廠（書頁 100–102）</h3>
+<p>情境 A 的假設在這裡<strong>全部不成立</strong>。</p>
+<p>就算用了金鑰交換協定，也有兩個沒法保證的事：</p>
+<ol>
+<li>步驟 1 執行的初始程式碼，<strong>真的是我們給的那份嗎？</strong></li>
+<li>就算程式碼是對的，<strong>它跑在真的板子上、還是假裝成板子的偷鑰匙機器上？</strong></li>
+</ol>
+<p>書上的具體情境：</p>
+<blockquote class="cal cal-plain">
+<p>我們給代工廠一套特製硬體，開機時把我們的程式送進每片新板子。
+然後我們用同一套系統跟新裝置通訊，把要燒進 fuse 的鑰匙送過去。</p>
+<p><strong>但誰能保證我們對話的對象是真的新裝置，
+而不是模仿通訊協定、只想偷鑰匙的惡意硬體？</strong></p>
+</blockquote>
+<p><strong>唯一的解法：在 ROM code 裡做身分驗證。</strong></p>
+<p>因為 ROM code 預設是安全的，所以可以靠 CPU 廠商提供的<strong>憑證</strong>
+來確認對面是真貨。</p>
+<p>流程：</p>
+<ol>
+<li>目標 CPU 做受保護的開機，ROM code 送出<strong>帶公鑰的憑證</strong></li>
+<li>主機用 CPU 廠商的公鑰（當作 CA）驗證憑證，通過就回送自己的公鑰</li>
+<li>用產生的共用鑰匙建立安全通道，主機安全地把鑰匙送給目標的 ROM code，
+   ROM code 去燒 fuse</li>
+<li>燒完重開機進安全狀態，產線繼續</li>
+</ol>
+<p>（書上 Figure 2-4）</p>
+<h3>⚠️ 兩個限制</h3>
+<ul>
+<li>這個流程<strong>需要 CPU 特別支援，不是所有 CPU 都做得到</strong></li>
+<li>書上提到還有另一種解法：先用一個<strong>已簽章的 bootloader</strong> 去寫 fuse
+  的前置階段。但<strong>明說「不在本書範圍」</strong></li>
+</ul>
+<p class="pageref"><span>📖</span>書頁 97–102</p>
+<hr />
+<h2 id="s14"><span class="sec-mark">§11</span><span class="sec-label">第一次開機才生出加密 rootfs</span></h2>
+<h3>這在解決什麼問題</h3>
+<p>信任鏈要求所有映像檔都簽好、加密好。那能不能直接做一個
+<strong>預先建好的二進位 flash 映像檔</strong>，產線直接灌進去就好？</p>
+<p><strong>bootloader 和 kernel 可以。但加密的 rootfs 不行。</strong></p>
+<h3>為什麼不行</h3>
+<p>兩個原因：</p>
+<ol>
+<li><strong>rootfs 是用隨機鑰匙加密的</strong>——這把鑰匙通常<strong>連開發者自己都不知道</strong>
+   （見 §5）</li>
+<li>就算你知道鑰匙，在某些 CPU 上這把鑰匙是<strong>封起來（sealed）</strong>的，
+   而封裝的動作<strong>每顆 CPU 產出的結果都不一樣</strong>
+   （因為封裝依賴每顆 CPU 獨有的 master key）</li>
+</ol>
+<p>所以不可能預先做一份大家通用的加密 rootfs 映像檔。</p>
+<h3>解法：出一包 tar，第一次開機才解開</h3>
+<p><strong>產線灌進去的 flash 映像檔內容</strong>（書上 Figure 2-5）：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>檔案</th>
+<th>狀態</th>
+<th>放哪</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>bootloader 映像檔</td>
+<td>簽章 +（最好）加密</td>
+<td><strong>不放在分割區裡</strong>，寫在磁碟的特定偏移位置</td>
+</tr>
+<tr>
+<td><code>fitimage</code></td>
+<td><strong>簽章 + 加密</strong>（兩個都要）</td>
+<td>boot 分割區</td>
+</tr>
+<tr>
+<td><code>rootfs.tar.zip.enc</code></td>
+<td>簽章 + 加密的 TAR 壓縮檔</td>
+<td>factory 分割區</td>
+</tr>
+<tr>
+<td><code>rootfs.signature</code></td>
+<td>上面那包的數位簽章</td>
+<td>同上</td>
+</tr>
+</tbody>
+</table></div>
+<blockquote class="cal cal-plain">
+<p>簽章也可以直接附在檔案後面，那就叫 <code>rootfs.tar.zip.enc.sign</code>。</p>
+</blockquote>
+<p><strong>fitimage 裡的 kernel 又包了 initramfs，而 initramfs 裡放著兩把鑰匙</strong>：</p>
+<ul>
+<li><code>factory.enc.key</code> — 解開 factory rootfs 的<strong>加密鑰匙</strong></li>
+<li><code>rootfs.sign.key</code> — 驗證 factory rootfs 的<strong>簽章公鑰</strong></li>
+</ul>
+<h3>開機流程</h3>
+<pre><code>bootloader 載入、驗證、執行 fitimage
+   ↓
+fitimage 裡的 kernel 啟動，執行內嵌 initramfs 的 init
+   ↓
+init 用 rootfs.sign.key 驗證 rootfs 的簽章
+   ↓ 通過
+用 factory.enc.key 解密，建立新的加密 rootfs 分割區，把檔案裝進去
+</code></pre>
+<h3 class="h3-key">🎯 所以 fitimage 一定要加密</h3>
+<p>現在應該很清楚為什麼：</p>
+<blockquote class="cal cal-plain">
+<p><strong>解開 rootfs TAR 檔的加密鑰匙就藏在 fitimage 的 initramfs 裡。</strong>
+fitimage 不加密 = 鑰匙裸奔。</p>
+</blockquote>
+<h3>產生出來的鑰匙存哪</h3>
+<p>拿來產生加密 rootfs 的那把鑰匙，以<strong>封起來（sealed）的形式</strong>
+存在 <code>/factory</code> 分割區（或任何明文分割區），供之後每次開機使用。</p>
+<blockquote class="cal cal-plain">
+<p>這裡不會有問題，因為<strong>產生和封裝都是由實際要用它的那顆 CPU 自己做的</strong>，
+不是在某台通用主機上做的。</p>
+</blockquote>
+<p class="pageref"><span>📖</span>書頁 103–105</p>
+<hr />
+<h2 id="s15"><span class="sec-mark">§12</span><span class="sec-label">更新系統要注意什麼</span></h2>
+<h3>這在解決什麼問題</h3>
+<p>每個嵌入式產品都要能更新自己。有 Secure Boot 之後，更新要多注意幾件事
+（不過比產線那邊寬鬆一些）。</p>
+<h3>更新包的內容（書上 Figure 2-6）</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>檔案</th>
+<th>說明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>bootloader.enc.sign</code></td>
+<td>bootloader（如果需要更新的話）</td>
+</tr>
+<tr>
+<td><code>fitimage.enc.sign</code></td>
+<td>kernel + DTB + initramfs</td>
+</tr>
+<tr>
+<td><code>rootfs.tar.zip.enc</code></td>
+<td>加密壓縮的 rootfs</td>
+</tr>
+<tr>
+<td><code>rootfs.signature</code></td>
+<td>上面那包的簽章</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>全部都要用正確的鑰匙簽好、加密好</strong>，否則更新會失敗，
+更糟的情況是<strong>系統直接掛掉</strong>。</p>
+<h3 class="h3-key">🎯 難點：兩把鑰匙</h3>
+<p>要更新 rootfs，需要拿到兩把鑰匙：</p>
+<ol>
+<li><strong>解開更新包 TAR 檔的加密鑰匙</strong></li>
+<li>（某些情況下）<strong>目前執行中的 rootfs 的加密鑰匙</strong></li>
+</ol>
+<p>第 2 把<strong>不是問題</strong>——它以封起來的形式存在 <code>/boot</code> 目錄裡。</p>
+<p>第 1 把<strong>比較麻煩</strong>：怎麼取得它，又不讓它裸露在檔案系統上？</p>
+<blockquote class="cal cal-gap">
+<p>📌 書上說：這取決於你怎麼實作系統，等講到不同的開機方案（§13）
+就會清楚。<strong>現階段只要記住這把鑰匙必須妥善管理，防止被讀取。</strong></p>
+</blockquote>
+<p class="pageref"><span>📖</span>書頁 105–107</p>
+<hr />
+<h1 id="s16" class="part">第三部分：兩種分割區配置（第 3 章，只講概念）</h1>
+<hr />
+<h2 id="s17"><span class="sec-mark">§13</span><span class="sec-label">Rescue 方案 vs A/B 方案</span></h2>
+<h3>這在解決什麼問題</h3>
+<p>Linux 裝在很多地方——桌機、手機、Wi-Fi AP、智慧電視，
+還有火車、配電箱、醫療設備。</p>
+<p><strong>後面那幾種，必須能在沒有人（或只有很少的專業支援）介入的情況下
+可靠地還原和更新。</strong> 所以所有元件在儲存裝置上怎麼擺，很重要。</p>
+<h3>前提：儲存裝置</h3>
+<p>現在最常用的是 <strong>eMMC</strong>（embedded MultiMediaCard）。</p>
+<blockquote class="cal cal-plain">
+<p><strong>eMMC</strong> = NAND flash + 控制器 + 介面，包在一個晶片裡。
+跟裸 NAND 的差別就是它自帶控制器，所以對使用者來說<strong>用起來就像硬碟</strong>。</p>
+</blockquote>
+<p>也還會看到 NOR、NAND，或混用（NOR + eMMC / NAND + eMMC）。</p>
+<blockquote class="cal cal-gap">
+<p>📌 另外還有 <strong>RPMB</strong>（Replay-Protected Memory Block，
+例如 <code>/dev/mmcblk2rpmb</code>），是另一塊可以安全存放敏感資料的區域。
+<strong>書上明說「不在本書範圍」</strong>，只給了 OP-TEE 的文件連結。</p>
+</blockquote>
+<h3>分割區有哪些</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>分割區</th>
+<th>掛在</th>
+<th>放什麼</th>
+<th>加密?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>boot</strong></td>
+<td><code>/boot</code></td>
+<td>fitimage（kernel + DTB + initramfs）</td>
+<td>❌ 明文</td>
+</tr>
+<tr>
+<td><strong>factory</strong></td>
+<td><code>/factory</code></td>
+<td>廠商的關鍵資訊，可能還有完整的出廠 OS</td>
+<td>❌ 明文</td>
+</tr>
+<tr>
+<td><strong>root</strong></td>
+<td><code>/</code></td>
+<td>rootfs</td>
+<td>✅ <strong>唯一加密的</strong></td>
+</tr>
+<tr>
+<td><strong>data</strong></td>
+<td><code>/data</code></td>
+<td>備份，<strong>主要是放更新用的資料</strong></td>
+<td>❌ 明文</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>只有 root 是加密的，這樣沒問題</strong>，因為：</p>
+<ul>
+<li>boot 和 factory 裡的 kernel / rootfs 映像檔<strong>本身就是加密的</strong></li>
+<li><code>/data</code> 裡的更新檔案，敏感的部分我們自己要記得加密</li>
+</ul>
+<p><code>lsblk</code> 看到的樣子（rescue 方案）：</p>
+<pre><code>mmcblk2
+|-mmcblk2p1        boot
+|-mmcblk2p2        factory
+|-mmcblk2p3        root
+| `-root           ← dm-crypt 的虛擬裝置，掛在 / 上
+`-mmcblk2p4        data
+</code></pre>
+<p>注意 <code>/</code> 掛的是 <strong><code>root</code> 這個虛擬裝置</strong>，不是 <code>mmcblk2p3</code> 本身。
+就是 §5 的 dm-crypt。</p>
+<h3><code>storage.info</code>：分割區的設計圖</h3>
+<p><code>/factory/storage.info</code> 是純文字檔，factory-reset 時照它重建分割區：</p>
+<pre><code>boot:1:8M:+128M:ext4
+factory:0:0:+500M:ext4
+root:0:0:+4000M:ext4
+data:0:0:0:ext4
+</code></pre>
+<p>每個欄位（用冒號分隔）：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>欄位</th>
+<th>意思</th>
+<th><code>0</code> 代表</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>分割區名字</td>
+<td>（必填）</td>
+</tr>
+<tr>
+<td>2</td>
+<td>分割區編號</td>
+<td>交給系統決定</td>
+</tr>
+<tr>
+<td>3</td>
+<td>起始偏移</td>
+<td>接在前一個分割區後面</td>
+</tr>
+<tr>
+<td>4</td>
+<td>大小</td>
+<td>用到裝置結尾</td>
+</tr>
+<tr>
+<td>5</td>
+<td>檔案系統類型</td>
+<td>—</td>
+</tr>
+</tbody>
+</table></div>
+<h3>💡 出廠時分割區會先「壓扁」</h3>
+<p>有個實務上的巧思：</p>
+<p><strong>產線灌映像檔時，把分割區設成最小</strong>，這樣要傳的資料變少、
+初始化更快、<strong>每片板子的生產時間變短</strong>。</p>
+<p>因為這階段所有資料都是靜態的，可以把要用的檔案全塞進 factory 分割區，
+其他分割區留空。</p>
+<p><strong>但有個限制</strong>：改分割表容易（用 <code>sgdisk</code>），但要<strong>不掉資料</strong>地改，
+就<strong>不能移動有資料的分割區</strong>。</p>
+<p>在 rescue 方案裡，初始資料都在 factory 分割區，所以：
+- <code>boot</code> 和 <code>factory</code> 是前兩個分割區，<strong>必須一開始就給正確大小</strong>（不能移動）
+- <code>root</code> 和 <code>data</code> 可以先設成 <strong>1MB</strong>，factory-reset 時再撐開</p>
+<pre><code>出廠時的 fdisk -l：
+/dev/loop9p1  ← boot，正確大小 128M
+/dev/loop9p2  ← factory，正確大小 500M
+/dev/loop9p3  ← root，只有 1M
+/dev/loop9p4  ← data，只有 1M
+</code></pre>
+<hr />
+<h3>方案一：Rescue（書頁 113–118）</h3>
+<p><strong>核心想法</strong>：留一個大的 factory 分割區，裡面放完整的出廠系統，
+<strong>隨時可以可靠地還原到出廠狀態</strong>。</p>
+<p>分割區：<code>boot</code> + <code>factory</code> + <code>root</code>（各一個）</p>
+<p><code>/boot/</code> 裡：</p>
+<pre><code>fitimage           ← kernel
+rootfs.key.bb      ← 解 rootfs 的加密鑰匙（封起來的形式，caam-keygen 產的）
+</code></pre>
+<p><code>/factory/</code> 裡：</p>
+<pre><code>fitimage           ← 出廠用的 kernel
+rootfs             ← 出廠 rootfs（加密的）
+rootfs.signature   ← 它的簽章
+storage.info       ← 分割區設計圖
+dek                ← 系統主加密鑰匙（廠商專屬）
+</code></pre>
+<blockquote class="cal cal-plain">
+<p><strong><code>dek</code> 這個檔案</strong>：i.MX8 上它是一個 wrapped 檔案。
+但有些 CPU 用別的方式管理主鑰匙（例如放在受保護的 fuse 裡），
+<strong>那些系統上根本不會有這個檔案</strong>。</p>
+</blockquote>
+<p><strong>開機時 U-Boot 印的</strong>：</p>
+<pre><code>Running bootcmd [normal] on mmc2...
+Schema: Rescue
+</code></pre>
+<p><strong>kernel command line</strong>：</p>
+<pre><code>root=/dev/mmcblk2p3 ... initramfs_normal boot_schema=rescue root_name=root
+                        ^^^^^^^^^^^^^^^^ ^^^^^^^^^^^^^^^^^^^ ^^^^^^^^^^^^^^
+                        做一般開機         用 rescue 方案       root 分割區叫 root
+</code></pre>
+<p><strong>U-Boot 的初始變數</strong>（書上用簡化過的 metacode 表達）：</p>
+<pre><code>schema=rescue
+bootname=boot
+rootname=root
+image=fitimage
+bootmode=normal
+</code></pre>
+<p>rescue 方案做 normal boot 時，<strong>跟預設值沒什麼不同</strong>——什麼都不用改。</p>
+<p><strong>⚠️ 缺點</strong>：要更新系統，必須<strong>重開機 → 等更新跑完 → 才能跑新版</strong>。
+這些全在同一次開機序列裡完成，<strong>安裝階段可能要好幾分鐘</strong>
+（看 rootfs 多大、CPU 多快）。這段時間系統是停的。</p>
+<hr />
+<h3>方案二：A/B（書頁 161–165）</h3>
+<p><strong>核心想法</strong>：<strong>兩個 root 分割區輪流用</strong>，
+所以可以<strong>在系統跑著的時候更新另一邊</strong>。</p>
+<p><strong>這是為了「系統不能停，連更新時都不能停」的場合。</strong></p>
+<p>分割區：<code>boot</code> + <code>factory</code> + <code>root_a</code> + <code>root_b</code></p>
+<p><code>lsblk</code> 看到的：</p>
+<pre><code>mmcblk2
+|-mmcblk2p1        boot      256M（要放兩個 fitimage，所以加倍）
+|-mmcblk2p2        factory   8M  （只有 8M！）
+|-mmcblk2p3        root_a
+|-mmcblk2p4        root_b
+| `-root           ← 目前用的那一邊
+`-mmcblk2p5        data
+</code></pre>
+<p><code>/boot/</code> 裡：</p>
+<pre><code>fitimage_a
+fitimage_b         ← 兩份 kernel
+rootfs.key.bb      ← 一把鑰匙同時解 root_a 和 root_b
+</code></pre>
+<blockquote class="cal cal-gap">
+<p>📌 上面是<strong>已經更新過至少一次</strong>的系統。出廠重置後第一次開機時，
+<strong><code>fitimage_a</code> 還不存在</strong>。</p>
+</blockquote>
+<p><code>/factory/</code> 裡：</p>
+<pre><code>dek
+storage.info
+</code></pre>
+<p><strong>出廠用的 fitimage 和它的憑證都不見了</strong>——這就是為什麼 factory 分割區
+可以縮到 8MB。</p>
+<p><code>storage.info</code>：</p>
+<pre><code>boot:1:8M:+256M:ext4
+factory:0:0:+8M:ext4
+root_a:0:0:+4000M:ext4
+root_b:0:0:+4000M:ext4
+data:0:0:0:ext4
+</code></pre>
+<p><strong>出廠時的分割區安排</strong>（跟 rescue 不一樣）：
+- 出廠 rootfs 壓縮檔放在 <strong><code>root_a</code></strong> 裡（不是 factory）
+- factory-reset 時，系統裝進 <strong><code>root_b</code></strong>
+- <code>root_a</code> 要等<strong>第一次系統更新</strong>時才被填滿</p>
+<p>所以出廠時：<code>boot</code>（256M）、<code>factory</code>（8M）、<code>root_a</code>（夠大，裝出廠 rootfs）
+是正確大小，<code>root_b</code> 和 <code>data</code> 各 1MB。</p>
+<blockquote class="cal cal-warn">
+<p>⚠️ <strong><code>root_a</code> 只能被放大，不能被移動</strong>，否則裡面的資料會在裝新系統之前就沒了。</p>
+</blockquote>
+<p><strong>開機時 U-Boot 印的</strong>：</p>
+<pre><code>Running bootcmd [normal] on mmc2...
+Schema: A/B [selector=b]
+                     ^^^ 這次要跑 b 邊
+</code></pre>
+<p><strong>kernel command line</strong>：</p>
+<pre><code>root=/dev/mmcblk2p4 ... initramfs_normal boot_schema=a_b root_name=root_b
+</code></pre>
+<p><strong>U-Boot 變數怎麼變的</strong>：</p>
+<pre><code>初始：                     normal boot 時重新定義：
+schema=a_b                schema=a_b
+ab_selector=b             ab_selector=b
+bootname=boot             bootname=boot
+rootname=root      →      rootname=root_b     ← 加上 selector
+image=fitimage     →      image=fitimage_b    ← 加上 selector
+bootmode=normal           bootmode=normal
+</code></pre>
+<p>所以 <code>rootpart</code> 從 3 變成 4，載入的 kernel 從 <code>fitimage</code> 變成 <code>fitimage_b</code>。
+<strong>A/B 的全部魔法就是這個字尾。</strong></p>
+<hr />
+<h3>兩者比較</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th><strong>Rescue</strong></th>
+<th><strong>A/B</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>root 分割區</td>
+<td>1 個</td>
+<td><strong>2 個</strong></td>
+</tr>
+<tr>
+<td>factory 分割區</td>
+<td><strong>大</strong>（500MB，放完整出廠系統）</td>
+<td>小（8MB）</td>
+</tr>
+<tr>
+<td>boot 分割區</td>
+<td>128MB（1 個 fitimage）</td>
+<td>256MB（2 個 fitimage）</td>
+</tr>
+<tr>
+<td>總空間需求</td>
+<td>較省</td>
+<td><strong>rootfs 空間加倍</strong></td>
+</tr>
+<tr>
+<td>更新時</td>
+<td><strong>必須重開機，停機好幾分鐘</strong></td>
+<td><strong>邊跑邊更新，不停機</strong></td>
+</tr>
+<tr>
+<td>適合</td>
+<td>空間吃緊、可以接受停機</td>
+<td>不能停的系統</td>
+</tr>
+</tbody>
+</table></div>
+<p>書上說：因為 A/B 要雙倍 rootfs 空間，<strong>用 A/B 的系統通常會配比較大的儲存裝置</strong>。</p>
+<p class="pageref"><span>📖</span>書頁 109–118、161–165</p>
+<hr />
+<h2 id="s18"><span class="sec-mark">§14</span><span class="sec-label">名詞小抄</span></h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>名詞</th>
+<th>全名</th>
+<th>白話</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ROM code</strong></td>
+<td>—</td>
+<td>燒死在晶片裡、改不了的開機程式。信任鏈的第一棒，唯一無條件安全的東西</td>
+</tr>
+<tr>
+<td><strong>Root-of-Trust</strong></td>
+<td>—</td>
+<td>信任的根。沒人驗它，靠物理/邏輯保護。通常就是 ROM code</td>
+</tr>
+<tr>
+<td><strong>fuse</strong></td>
+<td>—</td>
+<td>晶片裡一次性燒錄的儲存區。鑰匙燒進去就改不了</td>
+</tr>
+<tr>
+<td><strong>SPL</strong></td>
+<td>Secondary Program Loader</td>
+<td>U-Boot 的前導程式。主要任務：<strong>把 DRAM 初始化</strong>，讓大程式能跑</td>
+</tr>
+<tr>
+<td><strong>U-Boot</strong></td>
+<td>Universal Bootloader</td>
+<td>嵌入式界的 GRUB。載入 kernel、傳參數</td>
+</tr>
+<tr>
+<td><strong>TF-A / ATF</strong></td>
+<td>Trusted Firmware-A</td>
+<td>ARM 的高權限韌體，扮演 secure monitor，負責載入 U-Boot 和 OP-TEE</td>
+</tr>
+<tr>
+<td><strong>OP-TEE</strong></td>
+<td>Open Portable Trusted Execution Environment</td>
+<td>跑在 Secure World 的迷你 OS，提供加密服務</td>
+</tr>
+<tr>
+<td><strong>TrustZone</strong></td>
+<td>—</td>
+<td>ARM 的硬體技術，把一顆 CPU 切成 Secure World 和 Normal World</td>
+</tr>
+<tr>
+<td><strong>TEE / REE</strong></td>
+<td>Trusted / Rich Execution Environment</td>
+<td>TEE = 安全的小環境（OP-TEE）；REE = 一般的大環境（Linux）</td>
+</tr>
+<tr>
+<td><strong>TA</strong></td>
+<td>Trusted Application</td>
+<td>跑在 Secure World 裡的程式</td>
+</tr>
+<tr>
+<td><strong>CAAM</strong></td>
+<td>Cryptographic Acceleration and Assurance Module</td>
+<td>NXP i.MX 上的加密硬體：加密、雜湊、安全記憶體控制器、硬體亂數</td>
+</tr>
+<tr>
+<td><strong>DCP</strong></td>
+<td>Data Co-Processor</td>
+<td>部分 i.MX 的加密加速器，<strong>沒有自己的亂數源</strong></td>
+</tr>
+<tr>
+<td><strong>TPM</strong></td>
+<td>Trusted Platform Module</td>
+<td>專用安全晶片，安全存放鑰匙</td>
+</tr>
+<tr>
+<td><strong>HAB</strong></td>
+<td>High Assurance Boot</td>
+<td>NXP 的安全開機機制（書上出現在開機訊息裡，沒展開解釋）</td>
+</tr>
+<tr>
+<td><strong>fitimage</strong></td>
+<td>Flattened Image Tree</td>
+<td>一個檔案包住 kernel + Device Tree + initramfs</td>
+</tr>
+<tr>
+<td><strong>DTB</strong></td>
+<td>Device Tree Blob</td>
+<td>描述硬體長什麼樣的資料檔</td>
+</tr>
+<tr>
+<td><strong>initramfs</strong></td>
+<td>initial RAM filesystem</td>
+<td>記憶體裡的迷你 root filesystem，任務是幫真 rootfs 起床（例如先解密）</td>
+</tr>
+<tr>
+<td><strong>rootfs</strong></td>
+<td>root filesystem</td>
+<td>那個 <code>/</code></td>
+</tr>
+<tr>
+<td><strong>switch_root</strong></td>
+<td>—</td>
+<td>從 initramfs 切到真 rootfs。會<strong>遞迴刪掉舊的 root</strong></td>
+</tr>
+<tr>
+<td><strong>dm-crypt</strong></td>
+<td>device-mapper crypt</td>
+<td>區塊層透明加密。做出 <code>/dev/mapper/root</code></td>
+</tr>
+<tr>
+<td><strong>fscrypt</strong></td>
+<td>—</td>
+<td>檔案系統層加密（EXT4/F2FS/UBIFS 原生支援），可以只加密某些目錄</td>
+</tr>
+<tr>
+<td><strong>AF_ALG</strong></td>
+<td>—</td>
+<td>讓使用者空間直接用 kernel 加密層的 socket 介面</td>
+</tr>
+<tr>
+<td><strong>keyring</strong></td>
+<td>—</td>
+<td>kernel 裡放鑰匙的「資料夾」。<code>@s</code> = session，<code>@u</code> = user</td>
+</tr>
+<tr>
+<td><strong>seal / wrap</strong></td>
+<td>封 / 包</td>
+<td>把鑰匙加密成一坨 blob，只有封它的東西能解開</td>
+</tr>
+<tr>
+<td><strong>KMK</strong></td>
+<td>Kernel Master Key</td>
+<td>用來封 encrypted key 的那把 trusted key</td>
+</tr>
+<tr>
+<td><strong>DEK</strong></td>
+<td>Data Encryption Key</td>
+<td>系統主加密鑰匙。i.MX8 上是 <code>/factory/dek</code>，其他 CPU 可能沒有</td>
+</tr>
+<tr>
+<td><strong>eMMC</strong></td>
+<td>embedded MultiMediaCard</td>
+<td>NAND flash + 控制器包成一顆，用起來像硬碟</td>
+</tr>
+<tr>
+<td><strong>RPMB</strong></td>
+<td>Replay-Protected Memory Block</td>
+<td>eMMC 裡另一塊安全儲存區（<code>/dev/mmcblk2rpmb</code>）</td>
+</tr>
+<tr>
+<td><strong>SSP</strong></td>
+<td>Software Secure Provisioning</td>
+<td>產線灌韌體 + 燒鑰匙的整套最佳實務</td>
+</tr>
+<tr>
+<td><strong>IMA</strong></td>
+<td>Integrity Measurement Architecture</td>
+<td>Linux 的完整性量測機制，可以補 rootfs 沒簽章的洞</td>
+</tr>
+<tr>
+<td><strong>AES-CBC</strong></td>
+<td>—</td>
+<td>本書用的對稱加密。CBC = 每塊先跟前一塊密文 XOR</td>
+</tr>
+<tr>
+<td><strong>ECDSA</strong></td>
+<td>Elliptic Curve DSA</td>
+<td>本書用的簽章演算法，配 SHA-256</td>
+</tr>
+<tr>
+<td><strong>FUSE</strong></td>
+<td>Filesystem in Userspace</td>
+<td>讓非 root 使用者在使用者空間實作檔案系統的介面</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="s19"><span class="sec-mark">§15</span><span class="sec-label">書上沒講的（缺口清單）</span></h2>
+<p>書本自己明說「不在範圍」的東西，之後想深入就從這裡找：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>主題</th>
+<th>書上怎麼說</th>
+<th>為什麼你可能會想補</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Linux IMA</strong></td>
+<td>「不在本書涵蓋範圍」（書頁 81）</td>
+<td><strong>rootfs 沒簽章這個洞的唯一解</strong>。優先度最高</td>
+</tr>
+<tr>
+<td><strong>keyring 細節</strong></td>
+<td>「本書不詳細解釋 keyring 是什麼」（書頁 19）</td>
+<td>看 kernel 的 <code>Documentation/security/keys/</code></td>
+</tr>
+<tr>
+<td><strong>RPMB 的用法</strong></td>
+<td>「不在本書範圍」，給了 OP-TEE 文件連結（書頁 111）</td>
+<td>另一個放鑰匙的安全地方</td>
+</tr>
+<tr>
+<td><strong>代工廠的 signed-bootloader 前置方案</strong></td>
+<td>「不在本書範圍」（書頁 100）</td>
+<td>如果你的 CPU 不支援 ROM code 憑證，這是備案</td>
+</tr>
+<tr>
+<td><strong>kernel 內部怎麼用 crypto API</strong></td>
+<td>「本書不報告」（書頁 9）</td>
+<td>只有寫 kernel driver 才需要</td>
+</tr>
+<tr>
+<td><strong>eCryptfs + encrypted key 的深入用法</strong></td>
+<td>指向 <code>Documentation/security/keys/ecryptfs.rst</code>（書頁 39）</td>
+<td>eCryptfs 已停止維護，優先度低</td>
+</tr>
+<tr>
+<td><strong><code>dmsetup</code> 的其他選用參數</strong></td>
+<td>「超出本書範圍」，看 <code>man 8 dmsetup</code>（書頁 66）</td>
+<td>調校時會用到</td>
+</tr>
+<tr>
+<td><strong>非 ARM 平台</strong></td>
+<td>全書以 ARM（i.MX、STM32MP1）為準</td>
+<td>x86 embedded 要另外查</td>
+</tr>
+<tr>
+<td><strong>Windows / macOS</strong></td>
+<td>「本書不涵蓋」（前言）</td>
+<td>—</td>
+</tr>
+</tbody>
+</table></div>
+<h3>這輪筆記自己跳過的（不是書上沒有，是我們決定不做）</h3>
+<ul>
+<li>第 3 章的<strong>逐步操作</strong>：Rescue 和 A/B 各自怎麼做 normal boot /
+  factory-reset / system-update（書頁 118–189）</li>
+<li>第 4 章：產線怎麼產鑰匙（fuse-centric vs hybrid）、授權問題（書頁 191–204）</li>
+<li>附錄 A：防拆偵測（tamper detection）（書頁 205–）</li>
+<li>附錄 B：U-Boot 環境變數是明文，怎麼保護跨階段的祕密（書頁 217–）</li>
+</ul>
+<blockquote class="cal cal-plain">
+<p>附錄 B 特別值得補——它處理的是 §9 提到的 kernel command line 明文問題。</p>
+</blockquote>
+<hr />
+<h2 id="s20">一句話總結</h2>
+<blockquote class="cal cal-plain">
+<p><strong>Secure Boot = 一棒接一棒的驗簽 + 解密，
+從燒死在晶片裡的 ROM code 開始，到掛載加密的 rootfs 為止。
+掛載完成的那一刻，它就下班了。</strong></p>
+</blockquote>
+    </article>
+  </div>
+</div>
+
+<script>
+(function () {
+  var links = Array.prototype.slice.call(document.querySelectorAll(".nav-link"));
+  var byId = {};
+  links.forEach(function (a) { byId[a.getAttribute("href").slice(1)] = a; });
+  var heads = Object.keys(byId)
+    .map(function (id) { return document.getElementById(id); })
+    .filter(Boolean);
+  if (!heads.length || !("IntersectionObserver" in window)) return;
+
+  var seen = {};
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen[e.target.id] = e.isIntersecting; });
+    var current = null;
+    for (var i = 0; i < heads.length; i++) {
+      if (heads[i].getBoundingClientRect().top < 140) current = heads[i].id;
+    }
+    links.forEach(function (a) { a.classList.remove("on"); });
+    if (current && byId[current]) byId[current].classList.add("on");
+  }, { rootMargin: "-100px 0px -70% 0px", threshold: 0 });
+
+  heads.forEach(function (h) { io.observe(h); });
+})();
+</script>

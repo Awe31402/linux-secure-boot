@@ -1503,15 +1503,485 @@ bootmode=normal           bootmode=normal
 
 📖 **書頁 109–118、161–165** ｜ PDF 頁 127–136、179–183 ｜ [開啟 PDF](./linux-secure-boot.pdf#page=127)
 
-# 第四部分：鑰匙從哪來，以及法律問題（第 4 章）
+# 第四部分：Rescue 三個流程怎麼跑（第 3 章 3.1）
 
-前三章從頭到尾假設「鑰匙已經在那了」——fuse 裡有公鑰、CAAM 裡有金鑰、
-`/factory/dek` 裡有主鑰匙。這一章補上唯一沒回答的問題，
-外加一個跟程式無關、但會讓你被告的問題。
+到這裡為止，筆記講的都是**概念**。這一部分不一樣：它走的是書上那份
+**參考實作**，一步一步看它到底做了什麼。
+
+> ⚠️ **先講清楚兩件事，免得誤會**
+>
+> **1. 書上沒有給可以直接跑的腳本。** 它用 `...` 省略程式碼，
+> 並明講那是「a possible implementation」（一種可能的實作）。
+> 所以這幾節是**參考實作的導讀**，不是照著打就會動的 SOP。
+>
+> **2. PDF 抽字有掉行。** 有幾段 shell 腳本 pdftotext 沒抽乾淨
+> （縮排的續行、函式參數整段消失）。依規矩**不補字重建** ——
+> 抽不出來的地方我會明寫，並指向書頁。
+> **每一步在做什麼、為什麼需要，不受影響。**
 
 ---
 
-## §14 鑰匙到底是誰生的
+## §14 先看骨架：換的不是程式，是變數
+
+### 這在解決什麼問題
+
+第 3 章有六個流程（Rescue / A/B 各三個），看起來很多。
+但它們**共用同一個骨架**，先把骨架看懂，剩下的就只是差異。
+
+### 骨架長這樣
+
+```
+U-Boot
+ │  一組初始變數
+ │    schema=rescue  bootname=boot  rootname=root
+ │    image=fitimage bootmode=normal
+ │
+ ├─ 看 bootmode 決定改哪幾個變數 ──┐
+ │    normal  → 幾乎不改             │  這就是全部的魔法
+ │    factory → bootname 指向 factory│
+ │    update  → bootname 指向 data   │
+ │                                   ┘
+ ├─ part number：把分割區「名字」換成「編號」
+ │    bootpart=2   rootpart=3
+ │
+ └─ 組出 bootargs → bootm
+        ↓
+kernel
+ │  命令列帶著 initramfs_normal / _factory / _update
+ │  以及 device、boot_schema、root_name 三個參數
+        ↓
+init（initramfs 裡，同一支程式）
+    看 initramfs_* 決定跑哪一段
+```
+
+### 🎯 整章最重要的一句話
+
+> **三個流程用的是同一份 U-Boot 程式碼和同一支 init。
+> 換的不是程式，是變數。**
+
+`bootmode` 決定 U-Boot 去哪裡拿 fitimage，
+`initramfs_*` 決定 init 跑哪一段。就這樣。
+
+### 名詞
+
+- **U-Boot metacode**：書上自己造的詞。它說這是**簡化過的 U-Boot 腳本**，
+  為了好讀而寫，**不是真的 U-Boot 語法**。
+- **`part number`**：U-Boot 指令，把分割區的**標籤**（`boot`、`root`）
+  換成**編號**（2、3）。因為 kernel 的 `root=` 要的是 `/dev/mmcblk2p3` 這種東西。
+
+### ℹ️ kernel 傳給使用者空間的三個參數
+
+```
+device=/dev/mmcblk2     哪顆儲存裝置
+boot_schema=rescue      用哪種方案
+root_name=root          root 分割區叫什麼名字
+```
+
+kernel 不認得這三個，會原封不動丟給使用者空間——
+**init 就是靠讀它們知道自己該做什麼**。§9 看到的那行
+`Unknown kernel command line parameters ... will be passed to user space`
+講的就是這件事。
+
+> 📄 **原文**　書 p.119 ｜ PDF p.137
+>
+> We mention U-Boot metacode because we mean we are using a simplified version of
+> real U-Boot scripting code to be more readable and to better understand what U-Boot
+> really does.
+
+📖 **書頁 118–121** ｜ PDF 頁 136–139 ｜ [開啟 PDF](./linux-secure-boot.pdf#page=136)
+
+---
+
+## §15 Rescue — normal boot
+
+### U-Boot 這邊：幾乎什麼都不用做
+
+`schema=rescue` + `bootmode=normal` **就是預設值**，所以那個 `if` 分支裡
+基本上沒事做。接著：
+
+```
+part number mmc ${mmcdev} $bootname bootpart    # boot  → 2
+part number mmc ${mmcdev} $rootname rootpart    # root  → 3
+```
+
+然後組出命令列：
+
+```
+device=/dev/mmcblk2
+root=/dev/mmcblk2p3
+initramfs_normal
+boot_schema=rescue
+root_name=root
+```
+
+### init 這邊：四步
+
+**步驟 1｜掛 boot 分割區，載入鑰匙**
+
+```bash
+bootdev=$(get_device_by_label $device boot)
+mount $bootdev /boot || fatal "cannot mount boot partition"
+caam-keygen import /boot/rootfs.key.bb rootfs.key
+umount /boot
+```
+
+`rootfs.key.bb` 就是 §13 在 `/boot/` 裡看到的那個檔案。
+`caam-keygen import` 把它解封成 `/etc/caam/rootfs.key`。
+
+> ⚠️ 書上明說**這一步是廠商專屬的**：他們的 CPU 有 CAAM，
+> 別的 CPU 得換做法（例如 §4 的 trusted key）。
+
+**步驟 2｜鑰匙進 keyring，建立 dm-crypt 裝置**
+
+```bash
+sh -c "keyctl new_session ; \
+       keyctl padd logon logkey: @s < /etc/caam/rootfs.key ; \
+       dmsetup create root --table \"0 $(get_blockdev_size ${rootdev}) \
+         crypt capi:tk(cbc(aes))-plain :36:logon:logkey: 0 ${rootdev} 0\""
+dmsetup mknodes root
+rootdev="/dev/mapper/root"
+```
+
+**§5 講的每一個零件都在這裡**：`logon` key、`tk(cbc(aes))`、`:36:` 的長度、
+最後那個不能漏的冒號。書上說這行 `dmsetup create root`
+**就是整個 root filesystem 加密的核心**。
+
+為什麼要包一層 `sh -c`？書上給了兩個理由：
+避開鑰匙存取權限的問題，以及**讓 session 結束時鑰匙自動被 unlink**。
+
+**步驟 3｜檢查並掛載**
+
+```bash
+fsck.ext4 -y $rootdev
+wait_for_blockdev $rootdev || fatal "no block device!"
+mount $rootdev $ROOT_DIR || fatal "cannot mount real rootfs!"
+```
+
+`wait_for_blockdev` 是等 kernel 把區塊裝置 probe 完——
+**這時候它不一定準備好了**。
+
+**步驟 4｜換到真正的 rootfs**
+
+```bash
+move_mountpoint /dev /proc /sys /tmp
+cp --parents /etc/rootfs.sign.key $ROOT_DIR
+cp --parents /etc/caam/rootfs.key $ROOT_DIR
+exec switch_root -c /dev/console $ROOT_DIR ${init:-/sbin/init}
+fatal "System hangs!"        # 走到這裡代表出事了
+```
+
+**§9 講的 `exec switch_root` 在這裡有了完整版本**：
+`-c /dev/console` 指定 console、`$ROOT_DIR` 是新的 root、
+`${init:-/sbin/init}` 是要跑的 init（沒指定就用預設）。
+
+> 🎯 注意 `${init:-...}` 這個寫法——**init 是可以從 kernel 命令列指定的**。
+> 這正是 §26 那個攻擊打的地方。書上自己在這裡就標了註記，
+> 叫讀者去看附錄 B。
+
+> 📄 **原文**　書 p.123 ｜ PDF p.141
+>
+> [...] the dmsetup mknodes command is to force the creation of the block device
+> /dev/mapper/root, while the significant thing is the dmsetup create root command.
+> This is the core of the root filesystem encryption!
+
+📖 **書頁 118–128** ｜ PDF 頁 136–146 ｜ [開啟 PDF](./linux-secure-boot.pdf#page=136)
+
+---
+
+## §16 Rescue — factory-reset（10 步）
+
+### U-Boot 這邊：只改一件事
+
+```
+bootname 指向 factory（而不是 boot）
+```
+
+書上把這件事翻成白話：
+
+> 「嘿，開機請用 **factory** 裡的檔案，不要用 boot 裡的。」
+
+命令列帶的是 `initramfs_factory`。
+
+### init 這邊：10 步
+
+| # | 做什麼 | 為什麼 |
+|---|---|---|
+| 1 | 讀三個 kernel 參數，`sgdisk -e` 把 GPT 資料搬到碟尾 | 主機上做的映像檔**沒有正確的分割表**（§13 的「壓扁」），要先補上 |
+| 2 | 唯讀掛載 `/factory` | 要讀 `storage.info` 等基本資訊 |
+| 3 | 檢查檔案齊不齊，**驗 rootfs 簽章** | `fitimage`、`rootfs`、`rootfs.signature` 缺一不可 |
+| 4 | 重建 boot 分割區，把 fitimage 複製進去 | `mkfs` 之後從 factory 拷過來 |
+| 5 | **產生新的 rootfs 加密鑰匙**，存成 `/boot/rootfs.key.bb` | `caam-keygen create rootfs.key ecb -s 16` |
+| 6 | **重建分割表** | 把 §13 壓成 1MB 的 root 和 data 撐開到正確大小 |
+| 7 | 建立加密 rootfs，解密解壓填入 | 這一步是核心 |
+| 8 | 清掉其他分割區 | **不碰 factory、boot、root** |
+| 9 | 修 `/etc/fstab`，卸載清理 | label 換成 UUID |
+| 10 | 通知 bootloader「下次正常開機」 | `bundle-set-bootmode.sh normal` |
+
+### 🎯 步驟 3 有一個刻意的破洞
+
+檢查清單裡，`fitimage`、`rootfs`、`rootfs.signature` **缺了就 fatal**，
+但 `/factory/dek` 缺了只是 **warn**。
+
+書上解釋為什麼：
+
+> 這樣一來，**沒有 dek 的系統（也就是非安全系統）也能跑完 factory-reset**。
+> 開發時很好用——可以在還沒上安全機制的板子上跑同一套程式碼。
+> **但另一方面，這降低了系統安全性。**
+
+這是書上少數自己標出「我知道這樣不夠好」的地方。
+
+### 步驟 7：核心
+
+```bash
+sh -c "keyctl new_session ; keyctl padd logon logkey: @s < /etc/caam/rootfs.key ; \
+       dmsetup create root --table \"... crypt capi:tk(cbc(aes))-plain ...\""
+dmsetup mknodes root
+rootdev="/dev/mapper/root"
+mkfs.${rootfstype} -q -F -L root -I 256 $rootdev
+mount -t ${rootfstype} $rootdev /mnt
+openssl enc -d -in $factpath/rootfs -aes-256-cbc ...   # 解密 → 解壓 → 填入
+```
+
+注意 `rootdev` 這個變數**中途換了身分**：一開始指真正的分割區，
+`dmsetup` 之後指 `/dev/mapper/root`。
+
+> ℹ️ 書上點出一個細節：`openssl` 這裡是**直接給鑰匙和 IV**，
+> 不是用 passphrase。理由是 **A/B 方案需要這個形式**才能安全地保存鑰匙——
+> 這個伏筆在 §18 收。
+
+### 步驟 9：為什麼要把 label 換成 UUID
+
+rootfs 建好時，`/etc/fstab` 長這樣：
+
+```
+/dev/disk/by-label/boot      /boot     ...
+/dev/disk/by-label/factory   /factory  ...
+/dev/disk/by-label/data      /data     ...
+```
+
+書上說**用 label 指分割區容易出錯**，所以換成唯一的 UUID：
+
+```
+UUID="423db953-4c4d-43e4-894d-038330336763" /boot     ...
+UUID="3d3575ac-378e-420a-bb21-10043a692501" /factory  ...
+```
+
+> 📌 **這一節的程式碼有幾段抽不出來。** 步驟 3 的
+> `openssl dgst -verify` 後面接的參數、步驟 4 附加 `dek` 的那行，
+> PDF 抽出的文字裡整段消失。依規則不補字重建 ——
+> 要看完整程式碼請翻書頁 128–143（PDF 146–161）。
+
+> 📄 **原文**　書 p.132 ｜ PDF p.150
+>
+> Smart readers should have noticed that while the files fitimage, rootfs, and
+> rootfs.signature are required to go further with the factory-reset procedure, the
+> file dek is optional. This is an important note because, by doing so, we allow a
+> successful factory-reset execution even on those systems that don't have this file,
+> that is, on nonsecured systems! [...] it can be a decrease in system security…
+
+📖 **書頁 128–143** ｜ PDF 頁 146–161 ｜ [開啟 PDF](./linux-secure-boot.pdf#page=146)
+
+---
+
+## §17 Rescue — system-update（13 步）
+
+### U-Boot 這邊
+
+```
+bootname 指向 data，image 指向 update/fitimage
+```
+
+也就是 U-Boot 會去 `/data/update/` 找 fitimage。
+命令列帶 `initramfs_update`。
+
+> ℹ️ 書上強調這只是**約定**，你要換目錄也行——
+> 但 **bootloader 和使用者空間必須講好同一個位置**。
+
+### 流程跟 factory-reset 幾乎一樣
+
+差別只有**來源**：factory-reset 從 `/factory` 拿，system-update 從 `/data/update` 拿。
+
+所以 13 步裡多數是重複的：掛載 → 檢查 → 驗簽 → 重建 boot →
+產新鑰匙 → 重建加密 rootfs → 修 fstab → 通知 bootloader。
+
+### 🎯 但第 7 步不一樣：臨界區
+
+書上原話最有畫面：
+
+> **過了這一點，就不能靠單純重開機把系統救回來了。**
+> 更新程序必須跑完，否則系統會壞掉。
+> 這就是消費性裝置上那句經典訊息背後的東西：
+> **「System is updating. Please do not power off.」**
+
+那書上怎麼處理？**進臨界區之前，先把下次開機模式設成 factory：**
+
+```bash
+bundle-set-bootmode.sh factory
+```
+
+> 意思是：**萬一更新到一半斷電，下次開機會自動做 factory-reset**，
+> 系統回到出廠狀態——不會好，但至少是活的。
+>
+> 這是整個 rescue 方案存在的理由，在這一步變得非常具體：
+> **留一份完整的出廠系統，就是為了這種時候。**
+
+更新順利跑完後，最後一步才把開機模式改回 `normal`。
+
+### 這也解釋了 §13 說的「停機好幾分鐘」
+
+看步驟就懂了：重建 boot 分割區、產新鑰匙、格式化整個 root、
+解密解壓整包 rootfs 填進去——**這些全部在同一次開機序列裡完成**，
+而且系統在這段時間什麼事都做不了。
+
+rootfs 越大、CPU 越慢，停越久。
+
+> 📄 **原文**　書 p.151 ｜ PDF p.169
+>
+> Now we enter into a critical zone. In fact, after this point we cannot do a simple
+> reset to recover the system! The update procedure must go on, or the system will
+> break (this is the classical situation when we do an update on a consumer device
+> and we get the message: System is updating. Please do not power off).
+
+📖 **書頁 143–161** ｜ PDF 頁 161–179 ｜ [開啟 PDF](./linux-secure-boot.pdf#page=161)
+
+---
+
+# 第五部分：A/B 差在哪（第 3 章 3.2）
+
+A/B 方案的三個流程，跟 Rescue 用的是**同一份程式碼**。
+所以這一部分不重走一遍，只列差異。
+
+> 對照組是 §15、§16、§17。
+
+---
+
+## §18 三個流程的 delta
+
+### 總表
+
+| | **normal boot** | **factory-reset** | **system-update** |
+|---|---|---|---|
+| **U-Boot** | `rootname` / `image` 加上 selector 字尾 | `bootname`→`root_a`、`rootname`→`root_b` | **panic，直接不准** |
+| **init** | `/dev/mapper/root` 接到 `root_b`；**多存一份 logon key** | 出廠檔在 `root_a`，系統裝進 `root_b` | 不參與 |
+| **誰在做** | init | init | **完全在使用者空間** |
+
+### normal boot：加一個字尾
+
+初始變數多了 `ab_selector=b`，然後：
+
+```
+rootname=root      →  rootname=root_b
+image=fitimage     →  image=fitimage_b
+```
+
+於是 `rootpart` 從 3 變成 4，載入的 kernel 從 `fitimage` 變成 `fitimage_b`。
+**§13 講的「全部魔法就是這個字尾」，在這裡看到程式碼版本。**
+
+init 那四步裡，第 1、3 步**完全一樣**，第 2 步只差 `rootdev` 指向 `root_b`
+（`dmsetup create root` 這行本身一個字都沒改）。
+
+> ℹ️ 書上說 `root_a` 和 `root_b` 在這個例子裡**用同一把鑰匙**，
+> 但「也可以想像用不同的鑰匙」。
+
+### factory-reset：出廠檔案住在 root_a
+
+Rescue 是把出廠系統放在**大的 factory 分割區**。
+A/B 的 factory 分割區只有 8MB，放不下——所以出廠壓縮檔放在 **`root_a`**。
+
+U-Boot 的手法很直接：
+
+```
+bootname → root_a    （出廠檔案在這）
+rootname → root_b    （系統裝到這）
+```
+
+書上說：**這樣一設，剩下的就跟 rescue 一模一樣了。**
+
+> 這也解釋了 §13 那句「預設的 active 分割區是 b」——
+> 因為 a 那邊裝的是出廠映像檔，不是可以開機的系統。
+
+### 🎯 system-update：bootloader 直接拒絕
+
+```
+elif test ${bootmode} = update; then
+        ...
+        panic "### PANIC ### Cannot update (A/B schema)!"
+```
+
+**A/B 方案下，`bootmode=update` 會讓系統 panic 然後掛住。**
+
+書上說這很合理：
+
+> A/B 方案的存在理由就是**系統不能停，連更新時都不能停**。
+> 所以更新**完全在使用者空間執行，bootloader 一點事都不用做。**
+
+流程改由 `bundle-update.sh` 負責：
+
+```
+1. 偵測現在跑的是 root_a 還是 root_b → 推出「另一邊」
+2. 驗更新檔簽章
+3. 把 fitimage 裝進 /boot，命名成 fitimage_a 或 fitimage_b
+4. 格式化另一邊的 root 分割區，解密更新檔填進去
+5. 修 fstab、清理
+6. 改 bootloader 環境裡的 ab_selector
+7. 「重開機就跑新版了」
+```
+
+**整段期間，目前這一邊還在正常跑。**
+
+### 🎯 兩節之隔的伏筆與回收
+
+還記得 §15 步驟 4 那個「A/B 才有的額外動作」嗎——把鑰匙也存成一份 logon key？
+
+**那個動作存在的唯一理由，就是為了這一步。**
+
+書上把因果講得很清楚：
+
+> 解開更新檔 TAR 的鑰匙，在 rescue 方案裡**只活在 initramfs 裡**（`/etc/rootfs.key`），
+> 完全沒問題——因為 rescue 的更新就是在 initramfs 裡跑的。
+>
+> **但 A/B 的更新跑在 root filesystem 裡**，那裡讀不到 initramfs 的檔案。
+> 所以 normal boot 時就得先把這把鑰匙**用 logon key 的形式安全地存起來**，
+> 之後用 `crypto-afalg` 拿它來解密更新檔。
+
+這也回頭解釋了 §16 步驟 7 那個細節：
+**為什麼 `openssl` 要直接給鑰匙和 IV，而不是用 passphrase**——
+因為 A/B 需要鑰匙是這個形式才存得進 logon key。
+
+> 📌 **這一節的程式碼抽得比前面更糟。** `bundle-update.sh` 的片段裡
+> 大量條件式與參數消失。上面的流程是照書上的**文字說明**整理的，
+> 程式碼請直接翻書頁 181–189（PDF 199–207）。
+
+> 📄 **原文**　書 p.181 ｜ PDF p.199
+>
+> Compared to the rescue schema, this time, the update procedure starts and executes
+> entirely in user space; the bootloader has no duties to do. [...] This is logical
+> since the A/B schema is adopted when our system must be always running and
+> functional, even during a system-update!
+
+> 📄 **原文**　書 p.184 ｜ PDF p.202
+>
+> [...] we must use the encryption key for the root filesystem TAR archive [...] which
+> for the rescue schema lives only within the initramfs (file /etc/rootfs.key)
+> generating no problems at all; but now we need this key in the root filesystem! To
+> solve the issue, we should recall what we did in step 4 of the section "Doing a
+> Normal Boot" [...] where we used a logon key to securely save this important key.
+
+📖 **書頁 165–189** ｜ PDF 頁 183–207 ｜ [開啟 PDF](./linux-secure-boot.pdf#page=183)
+
+---
+
+# 第六部分：鑰匙從哪來，以及法律問題（第 4 章）
+
+§16 的 factory-reset 裡確實看到 `caam-keygen create` 產了一把 rootfs 的加密鑰匙。
+但那是**最容易的一把**。真正沒交代的是：**fuse 裡那把公鑰、
+簽 bootloader 和 fitimage 的那把私鑰，是誰在什麼時候生出來的？**
+
+這一章補上這個問題，外加一個跟程式無關、但會讓你被告的問題。
+
+---
+
+## §19 鑰匙到底是誰生的
 
 ### 這在解決什麼問題
 
@@ -1530,7 +2000,7 @@ bootmode=normal           bootmode=normal
 
 差別只有一個問題：**加密金鑰放哪裡？**
 
-| | **Fuse-Centric**（§15） | **Hybrid**（§16） |
+| | **Fuse-Centric**（§20） | **Hybrid**（§21） |
 |---|---|---|
 | 簽章公鑰的雜湊 | fuse | fuse |
 | **加密金鑰** | **也在 fuse** | **在磁碟上的 wrapped 檔案** |
@@ -1553,7 +2023,7 @@ bootmode=normal           bootmode=normal
 
 ---
 
-## §15 路線一：Fuse-Centric（全部鎖進 fuse）
+## §20 路線一：Fuse-Centric（全部鎖進 fuse）
 
 ### 這在解決什麼問題
 
@@ -1643,7 +2113,7 @@ STM32MP> stm32key select EDMK     # Encrypted Device Master Key
 
 ---
 
-## §16 路線二：Hybrid（金鑰放磁碟上，但包起來）
+## §21 路線二：Hybrid（金鑰放磁碟上，但包起來）
 
 ### 這在解決什麼問題
 
@@ -1654,7 +2124,7 @@ Hybrid 的答案：**簽章那半邊照舊燒 fuse，加密金鑰改放磁碟上
 
 ### 怎麼運作
 
-- fuse 裡**只放公鑰的雜湊**（簽章驗證流程跟 §15 一模一樣）
+- fuse 裡**只放公鑰的雜湊**（簽章驗證流程跟 §20 一模一樣）
 - 加密金鑰**封起來**（wrap，見 §4）存在磁碟上
 - 開機時 ROM code **除了 initial image，還要多載入這個檔案**，
   先解開它拿到金鑰，才能解密第一棒 bootloader
@@ -1726,7 +2196,7 @@ iMX9> dek_blob ${loadaddr} 0x81001000 256   # 把金鑰封成 blob
 
 ---
 
-## §17 Secure Boot 跟 GPLv3 打架
+## §22 Secure Boot 跟 GPLv3 打架
 
 ### 🎯 這節跟技術無關，但可能比技術更會害到你
 
@@ -1812,7 +2282,7 @@ Richard Stallman 和 **FSF**（自由軟體基金會）認為這剝奪了 GPL �
 
 📖 **書頁 201–204** ｜ PDF 頁 218–221 ｜ [開啟 PDF](./linux-secure-boot.pdf#page=218)
 
-# 第五部分：有人拿螺絲起子（附錄 A）
+# 第七部分：有人拿螺絲起子（附錄 A）
 
 前面整本書防的都是**軟體**：改過的 bootloader、假的 kernel、被讀走的鑰匙。
 
@@ -1823,7 +2293,7 @@ Richard Stallman 和 **FSF**（自由軟體基金會）認為這剝奪了 GPL �
 
 ---
 
-## §18 有人把機殼打開了怎麼辦
+## §23 有人把機殼打開了怎麼辦
 
 ### 這在解決什麼問題
 
@@ -1910,7 +2380,7 @@ Richard Stallman 和 **FSF**（自由軟體基金會）認為這剝奪了 GPL �
 
 ---
 
-## §19 那顆電池，和 sentinel 暫存器
+## §24 那顆電池，和 sentinel 暫存器
 
 ### 這在解決什麼問題
 
@@ -2027,7 +2497,7 @@ Richard Stallman 和 **FSF**（自由軟體基金會）認為這剝奪了 GPL �
 
 ---
 
-## §20 系統跑起來之後：兩個檔案
+## §25 系統跑起來之後：兩個檔案
 
 ### 這在解決什麼問題
 
@@ -2040,7 +2510,7 @@ Richard Stallman 和 **FSF**（自由軟體基金會）認為這剝奪了 GPL �
 
 偵測到之後，supervisor 有兩條路：
 
-1. **直接強制重開機** → 回到 §19 那套開機檢查，系統會 hang 住
+1. **直接強制重開機** → 回到 §24 那套開機檢查，系統會 hang 住
 2. **通知使用者空間** → 透過 **sysfs** 介面或 char device
 
 走第二條的話，你要自己寫一個 **daemon** 定期監看，
@@ -2099,7 +2569,7 @@ no
 
 ---
 
-# 第六部分：階段之間怎麼傳祕密（附錄 B）
+# 第八部分：階段之間怎麼傳祕密（附錄 B）
 
 附錄 A 防的是有人動硬體。這一篇回到軟體，而且是**全書唯一示範信任鏈怎麼被打穿**的地方。
 
@@ -2108,7 +2578,7 @@ no
 
 ---
 
-## §21 破口：階段之間一定會交換資訊
+## §26 破口：階段之間一定會交換資訊
 
 ### 這在解決什麼問題
 
@@ -2209,7 +2679,7 @@ $ fw_setenv kernelargs 'rdinit=/bin/sh'
 
 ---
 
-## §22 修法一：把 `rdinit=` 從 kernel 裡挖掉
+## §27 修法一：把 `rdinit=` 從 kernel 裡挖掉
 
 ### 這在解決什麼問題
 
@@ -2276,7 +2746,7 @@ __setup("rdinit=", rdinit_setup);
 
 ---
 
-## §23 修法二：把鑰匙搬進 kernel——以及為什麼這招也守不住
+## §28 修法二：把鑰匙搬進 kernel——以及為什麼這招也守不住
 
 ### 這在解決什麼問題
 
@@ -2345,7 +2815,7 @@ Contents of section .rodata:
 offset `0x18` 開始的 32 bytes 就是鑰匙：
 `24ccd690 79643e83 ... 3fc7fb73 d8574209`
 
-**跟 §22 裡 `cat /etc/rootfs.key` 讀到的完全一樣。**
+**跟 §27 裡 `cat /etc/rootfs.key` 讀到的完全一樣。**
 
 ### 所以這招擋住了什麼、沒擋住什麼
 
@@ -2375,7 +2845,7 @@ offset `0x18` 開始的 32 bytes 就是鑰匙：
 
 ---
 
-## §24 附錄 B 到底告訴我們什麼
+## §29 附錄 B 到底告訴我們什麼
 
 ### 🎯 它沒有給你一個安全的答案
 
@@ -2414,474 +2884,6 @@ BusyBox 那道防線      → 一個包裝腳本就繞過
 
 📖 **書頁 217–236** ｜ PDF 頁 233–252 ｜ [開啟 PDF](./linux-secure-boot.pdf#page=233)
 
-# 第七部分：Rescue 三個流程怎麼跑（第 3 章 3.1）
-
-到這裡為止，筆記講的都是**概念**。這一部分不一樣：它走的是書上那份
-**參考實作**，一步一步看它到底做了什麼。
-
-> ⚠️ **先講清楚兩件事，免得誤會**
->
-> **1. 書上沒有給可以直接跑的腳本。** 它用 `...` 省略程式碼，
-> 並明講那是「a possible implementation」（一種可能的實作）。
-> 所以這幾節是**參考實作的導讀**，不是照著打就會動的 SOP。
->
-> **2. PDF 抽字有掉行。** 有幾段 shell 腳本 pdftotext 沒抽乾淨
-> （縮排的續行、函式參數整段消失）。依規矩**不補字重建** ——
-> 抽不出來的地方我會明寫，並指向書頁。
-> **每一步在做什麼、為什麼需要，不受影響。**
-
----
-
-## §25 先看骨架：換的不是程式，是變數
-
-### 這在解決什麼問題
-
-第 3 章有六個流程（Rescue / A/B 各三個），看起來很多。
-但它們**共用同一個骨架**，先把骨架看懂，剩下的就只是差異。
-
-### 骨架長這樣
-
-```
-U-Boot
- │  一組初始變數
- │    schema=rescue  bootname=boot  rootname=root
- │    image=fitimage bootmode=normal
- │
- ├─ 看 bootmode 決定改哪幾個變數 ──┐
- │    normal  → 幾乎不改             │  這就是全部的魔法
- │    factory → bootname 指向 factory│
- │    update  → bootname 指向 data   │
- │                                   ┘
- ├─ part number：把分割區「名字」換成「編號」
- │    bootpart=2   rootpart=3
- │
- └─ 組出 bootargs → bootm
-        ↓
-kernel
- │  命令列帶著 initramfs_normal / _factory / _update
- │  以及 device、boot_schema、root_name 三個參數
-        ↓
-init（initramfs 裡，同一支程式）
-    看 initramfs_* 決定跑哪一段
-```
-
-### 🎯 整章最重要的一句話
-
-> **三個流程用的是同一份 U-Boot 程式碼和同一支 init。
-> 換的不是程式，是變數。**
-
-`bootmode` 決定 U-Boot 去哪裡拿 fitimage，
-`initramfs_*` 決定 init 跑哪一段。就這樣。
-
-### 名詞
-
-- **U-Boot metacode**：書上自己造的詞。它說這是**簡化過的 U-Boot 腳本**，
-  為了好讀而寫，**不是真的 U-Boot 語法**。
-- **`part number`**：U-Boot 指令，把分割區的**標籤**（`boot`、`root`）
-  換成**編號**（2、3）。因為 kernel 的 `root=` 要的是 `/dev/mmcblk2p3` 這種東西。
-
-### ℹ️ kernel 傳給使用者空間的三個參數
-
-```
-device=/dev/mmcblk2     哪顆儲存裝置
-boot_schema=rescue      用哪種方案
-root_name=root          root 分割區叫什麼名字
-```
-
-kernel 不認得這三個，會原封不動丟給使用者空間——
-**init 就是靠讀它們知道自己該做什麼**。§9 看到的那行
-`Unknown kernel command line parameters ... will be passed to user space`
-講的就是這件事。
-
-> 📄 **原文**　書 p.119 ｜ PDF p.137
->
-> We mention U-Boot metacode because we mean we are using a simplified version of
-> real U-Boot scripting code to be more readable and to better understand what U-Boot
-> really does.
-
-📖 **書頁 118–121** ｜ PDF 頁 136–139 ｜ [開啟 PDF](./linux-secure-boot.pdf#page=136)
-
----
-
-## §26 Rescue — normal boot
-
-### U-Boot 這邊：幾乎什麼都不用做
-
-`schema=rescue` + `bootmode=normal` **就是預設值**，所以那個 `if` 分支裡
-基本上沒事做。接著：
-
-```
-part number mmc ${mmcdev} $bootname bootpart    # boot  → 2
-part number mmc ${mmcdev} $rootname rootpart    # root  → 3
-```
-
-然後組出命令列：
-
-```
-device=/dev/mmcblk2
-root=/dev/mmcblk2p3
-initramfs_normal
-boot_schema=rescue
-root_name=root
-```
-
-### init 這邊：四步
-
-**步驟 1｜掛 boot 分割區，載入鑰匙**
-
-```bash
-bootdev=$(get_device_by_label $device boot)
-mount $bootdev /boot || fatal "cannot mount boot partition"
-caam-keygen import /boot/rootfs.key.bb rootfs.key
-umount /boot
-```
-
-`rootfs.key.bb` 就是 §13 在 `/boot/` 裡看到的那個檔案。
-`caam-keygen import` 把它解封成 `/etc/caam/rootfs.key`。
-
-> ⚠️ 書上明說**這一步是廠商專屬的**：他們的 CPU 有 CAAM，
-> 別的 CPU 得換做法（例如 §4 的 trusted key）。
-
-**步驟 2｜鑰匙進 keyring，建立 dm-crypt 裝置**
-
-```bash
-sh -c "keyctl new_session ; \
-       keyctl padd logon logkey: @s < /etc/caam/rootfs.key ; \
-       dmsetup create root --table \"0 $(get_blockdev_size ${rootdev}) \
-         crypt capi:tk(cbc(aes))-plain :36:logon:logkey: 0 ${rootdev} 0\""
-dmsetup mknodes root
-rootdev="/dev/mapper/root"
-```
-
-**§5 講的每一個零件都在這裡**：`logon` key、`tk(cbc(aes))`、`:36:` 的長度、
-最後那個不能漏的冒號。書上說這行 `dmsetup create root`
-**就是整個 root filesystem 加密的核心**。
-
-為什麼要包一層 `sh -c`？書上給了兩個理由：
-避開鑰匙存取權限的問題，以及**讓 session 結束時鑰匙自動被 unlink**。
-
-**步驟 3｜檢查並掛載**
-
-```bash
-fsck.ext4 -y $rootdev
-wait_for_blockdev $rootdev || fatal "no block device!"
-mount $rootdev $ROOT_DIR || fatal "cannot mount real rootfs!"
-```
-
-`wait_for_blockdev` 是等 kernel 把區塊裝置 probe 完——
-**這時候它不一定準備好了**。
-
-**步驟 4｜換到真正的 rootfs**
-
-```bash
-move_mountpoint /dev /proc /sys /tmp
-cp --parents /etc/rootfs.sign.key $ROOT_DIR
-cp --parents /etc/caam/rootfs.key $ROOT_DIR
-exec switch_root -c /dev/console $ROOT_DIR ${init:-/sbin/init}
-fatal "System hangs!"        # 走到這裡代表出事了
-```
-
-**§9 講的 `exec switch_root` 在這裡有了完整版本**：
-`-c /dev/console` 指定 console、`$ROOT_DIR` 是新的 root、
-`${init:-/sbin/init}` 是要跑的 init（沒指定就用預設）。
-
-> 🎯 注意 `${init:-...}` 這個寫法——**init 是可以從 kernel 命令列指定的**。
-> 這正是 §21 那個攻擊打的地方。書上自己在這裡就標了註記，
-> 叫讀者去看附錄 B。
-
-> 📄 **原文**　書 p.123 ｜ PDF p.141
->
-> [...] the dmsetup mknodes command is to force the creation of the block device
-> /dev/mapper/root, while the significant thing is the dmsetup create root command.
-> This is the core of the root filesystem encryption!
-
-📖 **書頁 118–128** ｜ PDF 頁 136–146 ｜ [開啟 PDF](./linux-secure-boot.pdf#page=136)
-
----
-
-## §27 Rescue — factory-reset（10 步）
-
-### U-Boot 這邊：只改一件事
-
-```
-bootname 指向 factory（而不是 boot）
-```
-
-書上把這件事翻成白話：
-
-> 「嘿，開機請用 **factory** 裡的檔案，不要用 boot 裡的。」
-
-命令列帶的是 `initramfs_factory`。
-
-### init 這邊：10 步
-
-| # | 做什麼 | 為什麼 |
-|---|---|---|
-| 1 | 讀三個 kernel 參數，`sgdisk -e` 把 GPT 資料搬到碟尾 | 主機上做的映像檔**沒有正確的分割表**（§13 的「壓扁」），要先補上 |
-| 2 | 唯讀掛載 `/factory` | 要讀 `storage.info` 等基本資訊 |
-| 3 | 檢查檔案齊不齊，**驗 rootfs 簽章** | `fitimage`、`rootfs`、`rootfs.signature` 缺一不可 |
-| 4 | 重建 boot 分割區，把 fitimage 複製進去 | `mkfs` 之後從 factory 拷過來 |
-| 5 | **產生新的 rootfs 加密鑰匙**，存成 `/boot/rootfs.key.bb` | `caam-keygen create rootfs.key ecb -s 16` |
-| 6 | **重建分割表** | 把 §13 壓成 1MB 的 root 和 data 撐開到正確大小 |
-| 7 | 建立加密 rootfs，解密解壓填入 | 這一步是核心 |
-| 8 | 清掉其他分割區 | **不碰 factory、boot、root** |
-| 9 | 修 `/etc/fstab`，卸載清理 | label 換成 UUID |
-| 10 | 通知 bootloader「下次正常開機」 | `bundle-set-bootmode.sh normal` |
-
-### 🎯 步驟 3 有一個刻意的破洞
-
-檢查清單裡，`fitimage`、`rootfs`、`rootfs.signature` **缺了就 fatal**，
-但 `/factory/dek` 缺了只是 **warn**。
-
-書上解釋為什麼：
-
-> 這樣一來，**沒有 dek 的系統（也就是非安全系統）也能跑完 factory-reset**。
-> 開發時很好用——可以在還沒上安全機制的板子上跑同一套程式碼。
-> **但另一方面，這降低了系統安全性。**
-
-這是書上少數自己標出「我知道這樣不夠好」的地方。
-
-### 步驟 7：核心
-
-```bash
-sh -c "keyctl new_session ; keyctl padd logon logkey: @s < /etc/caam/rootfs.key ; \
-       dmsetup create root --table \"... crypt capi:tk(cbc(aes))-plain ...\""
-dmsetup mknodes root
-rootdev="/dev/mapper/root"
-mkfs.${rootfstype} -q -F -L root -I 256 $rootdev
-mount -t ${rootfstype} $rootdev /mnt
-openssl enc -d -in $factpath/rootfs -aes-256-cbc ...   # 解密 → 解壓 → 填入
-```
-
-注意 `rootdev` 這個變數**中途換了身分**：一開始指真正的分割區，
-`dmsetup` 之後指 `/dev/mapper/root`。
-
-> ℹ️ 書上點出一個細節：`openssl` 這裡是**直接給鑰匙和 IV**，
-> 不是用 passphrase。理由是 **A/B 方案需要這個形式**才能安全地保存鑰匙——
-> 這個伏筆在 §29 收。
-
-### 步驟 9：為什麼要把 label 換成 UUID
-
-rootfs 建好時，`/etc/fstab` 長這樣：
-
-```
-/dev/disk/by-label/boot      /boot     ...
-/dev/disk/by-label/factory   /factory  ...
-/dev/disk/by-label/data      /data     ...
-```
-
-書上說**用 label 指分割區容易出錯**，所以換成唯一的 UUID：
-
-```
-UUID="423db953-4c4d-43e4-894d-038330336763" /boot     ...
-UUID="3d3575ac-378e-420a-bb21-10043a692501" /factory  ...
-```
-
-> 📌 **這一節的程式碼有幾段抽不出來。** 步驟 3 的
-> `openssl dgst -verify` 後面接的參數、步驟 4 附加 `dek` 的那行，
-> PDF 抽出的文字裡整段消失。依規則不補字重建 ——
-> 要看完整程式碼請翻書頁 128–143（PDF 146–161）。
-
-> 📄 **原文**　書 p.132 ｜ PDF p.150
->
-> Smart readers should have noticed that while the files fitimage, rootfs, and
-> rootfs.signature are required to go further with the factory-reset procedure, the
-> file dek is optional. This is an important note because, by doing so, we allow a
-> successful factory-reset execution even on those systems that don't have this file,
-> that is, on nonsecured systems! [...] it can be a decrease in system security…
-
-📖 **書頁 128–143** ｜ PDF 頁 146–161 ｜ [開啟 PDF](./linux-secure-boot.pdf#page=146)
-
----
-
-## §28 Rescue — system-update（13 步）
-
-### U-Boot 這邊
-
-```
-bootname 指向 data，image 指向 update/fitimage
-```
-
-也就是 U-Boot 會去 `/data/update/` 找 fitimage。
-命令列帶 `initramfs_update`。
-
-> ℹ️ 書上強調這只是**約定**，你要換目錄也行——
-> 但 **bootloader 和使用者空間必須講好同一個位置**。
-
-### 流程跟 factory-reset 幾乎一樣
-
-差別只有**來源**：factory-reset 從 `/factory` 拿，system-update 從 `/data/update` 拿。
-
-所以 13 步裡多數是重複的：掛載 → 檢查 → 驗簽 → 重建 boot →
-產新鑰匙 → 重建加密 rootfs → 修 fstab → 通知 bootloader。
-
-### 🎯 但第 7 步不一樣：臨界區
-
-書上原話最有畫面：
-
-> **過了這一點，就不能靠單純重開機把系統救回來了。**
-> 更新程序必須跑完，否則系統會壞掉。
-> 這就是消費性裝置上那句經典訊息背後的東西：
-> **「System is updating. Please do not power off.」**
-
-那書上怎麼處理？**進臨界區之前，先把下次開機模式設成 factory：**
-
-```bash
-bundle-set-bootmode.sh factory
-```
-
-> 意思是：**萬一更新到一半斷電，下次開機會自動做 factory-reset**，
-> 系統回到出廠狀態——不會好，但至少是活的。
->
-> 這是整個 rescue 方案存在的理由，在這一步變得非常具體：
-> **留一份完整的出廠系統，就是為了這種時候。**
-
-更新順利跑完後，最後一步才把開機模式改回 `normal`。
-
-### 這也解釋了 §13 說的「停機好幾分鐘」
-
-看步驟就懂了：重建 boot 分割區、產新鑰匙、格式化整個 root、
-解密解壓整包 rootfs 填進去——**這些全部在同一次開機序列裡完成**，
-而且系統在這段時間什麼事都做不了。
-
-rootfs 越大、CPU 越慢，停越久。
-
-> 📄 **原文**　書 p.151 ｜ PDF p.169
->
-> Now we enter into a critical zone. In fact, after this point we cannot do a simple
-> reset to recover the system! The update procedure must go on, or the system will
-> break (this is the classical situation when we do an update on a consumer device
-> and we get the message: System is updating. Please do not power off).
-
-📖 **書頁 143–161** ｜ PDF 頁 161–179 ｜ [開啟 PDF](./linux-secure-boot.pdf#page=161)
-
----
-
-# 第八部分：A/B 差在哪（第 3 章 3.2）
-
-A/B 方案的三個流程，跟 Rescue 用的是**同一份程式碼**。
-所以這一部分不重走一遍，只列差異。
-
-> 對照組是 §26、§27、§28。
-
----
-
-## §29 三個流程的 delta
-
-### 總表
-
-| | **normal boot** | **factory-reset** | **system-update** |
-|---|---|---|---|
-| **U-Boot** | `rootname` / `image` 加上 selector 字尾 | `bootname`→`root_a`、`rootname`→`root_b` | **panic，直接不准** |
-| **init** | `/dev/mapper/root` 接到 `root_b`；**多存一份 logon key** | 出廠檔在 `root_a`，系統裝進 `root_b` | 不參與 |
-| **誰在做** | init | init | **完全在使用者空間** |
-
-### normal boot：加一個字尾
-
-初始變數多了 `ab_selector=b`，然後：
-
-```
-rootname=root      →  rootname=root_b
-image=fitimage     →  image=fitimage_b
-```
-
-於是 `rootpart` 從 3 變成 4，載入的 kernel 從 `fitimage` 變成 `fitimage_b`。
-**§13 講的「全部魔法就是這個字尾」，在這裡看到程式碼版本。**
-
-init 那四步裡，第 1、3 步**完全一樣**，第 2 步只差 `rootdev` 指向 `root_b`
-（`dmsetup create root` 這行本身一個字都沒改）。
-
-> ℹ️ 書上說 `root_a` 和 `root_b` 在這個例子裡**用同一把鑰匙**，
-> 但「也可以想像用不同的鑰匙」。
-
-### factory-reset：出廠檔案住在 root_a
-
-Rescue 是把出廠系統放在**大的 factory 分割區**。
-A/B 的 factory 分割區只有 8MB，放不下——所以出廠壓縮檔放在 **`root_a`**。
-
-U-Boot 的手法很直接：
-
-```
-bootname → root_a    （出廠檔案在這）
-rootname → root_b    （系統裝到這）
-```
-
-書上說：**這樣一設，剩下的就跟 rescue 一模一樣了。**
-
-> 這也解釋了 §13 那句「預設的 active 分割區是 b」——
-> 因為 a 那邊裝的是出廠映像檔，不是可以開機的系統。
-
-### 🎯 system-update：bootloader 直接拒絕
-
-```
-elif test ${bootmode} = update; then
-        ...
-        panic "### PANIC ### Cannot update (A/B schema)!"
-```
-
-**A/B 方案下，`bootmode=update` 會讓系統 panic 然後掛住。**
-
-書上說這很合理：
-
-> A/B 方案的存在理由就是**系統不能停，連更新時都不能停**。
-> 所以更新**完全在使用者空間執行，bootloader 一點事都不用做。**
-
-流程改由 `bundle-update.sh` 負責：
-
-```
-1. 偵測現在跑的是 root_a 還是 root_b → 推出「另一邊」
-2. 驗更新檔簽章
-3. 把 fitimage 裝進 /boot，命名成 fitimage_a 或 fitimage_b
-4. 格式化另一邊的 root 分割區，解密更新檔填進去
-5. 修 fstab、清理
-6. 改 bootloader 環境裡的 ab_selector
-7. 「重開機就跑新版了」
-```
-
-**整段期間，目前這一邊還在正常跑。**
-
-### 🎯 兩節之隔的伏筆與回收
-
-還記得 §26 步驟 4 那個「A/B 才有的額外動作」嗎——把鑰匙也存成一份 logon key？
-
-**那個動作存在的唯一理由，就是為了這一步。**
-
-書上把因果講得很清楚：
-
-> 解開更新檔 TAR 的鑰匙，在 rescue 方案裡**只活在 initramfs 裡**（`/etc/rootfs.key`），
-> 完全沒問題——因為 rescue 的更新就是在 initramfs 裡跑的。
->
-> **但 A/B 的更新跑在 root filesystem 裡**，那裡讀不到 initramfs 的檔案。
-> 所以 normal boot 時就得先把這把鑰匙**用 logon key 的形式安全地存起來**，
-> 之後用 `crypto-afalg` 拿它來解密更新檔。
-
-這也回頭解釋了 §27 步驟 7 那個細節：
-**為什麼 `openssl` 要直接給鑰匙和 IV，而不是用 passphrase**——
-因為 A/B 需要鑰匙是這個形式才存得進 logon key。
-
-> 📌 **這一節的程式碼抽得比前面更糟。** `bundle-update.sh` 的片段裡
-> 大量條件式與參數消失。上面的流程是照書上的**文字說明**整理的，
-> 程式碼請直接翻書頁 181–189（PDF 199–207）。
-
-> 📄 **原文**　書 p.181 ｜ PDF p.199
->
-> Compared to the rescue schema, this time, the update procedure starts and executes
-> entirely in user space; the bootloader has no duties to do. [...] This is logical
-> since the A/B schema is adopted when our system must be always running and
-> functional, even during a system-update!
-
-> 📄 **原文**　書 p.184 ｜ PDF p.202
->
-> [...] we must use the encryption key for the root filesystem TAR archive [...] which
-> for the rescue schema lives only within the initramfs (file /etc/rootfs.key)
-> generating no problems at all; but now we need this key in the root filesystem! To
-> solve the issue, we should recall what we did in step 4 of the section "Doing a
-> Normal Boot" [...] where we used a logon key to securely save this important key.
-
-📖 **書頁 165–189** ｜ PDF 頁 183–207 ｜ [開啟 PDF](./linux-secure-boot.pdf#page=183)
-
----
-
 ## §30 名詞小抄
 
 | 名詞 | 全名 | 白話 |
@@ -2911,7 +2913,7 @@ elif test ${bootmode} = update; then
 | **keyring** | — | kernel 裡放鑰匙的「資料夾」。`@s` = session，`@u` = user |
 | **seal / wrap** | 封 / 包 | 把鑰匙加密成一坨 blob，只有封它的東西能解開 |
 | **KMK** | Kernel Master Key | 用來封 encrypted key 的那把 trusted key |
-| **DEK** | Data Encryption Key | 系統主加密鑰匙。i.MX 上封成 **DEK blob** 存為 `/factory/dek`；走 fuse-centric 的 CPU 沒有這個檔案（§16） |
+| **DEK** | Data Encryption Key | 系統主加密鑰匙。i.MX 上封成 **DEK blob** 存為 `/factory/dek`；走 fuse-centric 的 CPU 沒有這個檔案（§21） |
 | **eMMC** | embedded MultiMediaCard | NAND flash + 控制器包成一顆，用起來像硬碟 |
 | **RPMB** | Replay-Protected Memory Block | eMMC 裡另一塊安全儲存區（`/dev/mmcblk2rpmb`） |
 | **SSP** | Software Secure Provisioning | 產線灌韌體 + 燒鑰匙的整套最佳實務 |
@@ -2919,32 +2921,32 @@ elif test ${bootmode} = update; then
 | **AES-CBC** | — | 本書用的對稱加密。CBC = 每塊先跟前一塊密文 XOR |
 | **ECDSA** | Elliptic Curve DSA | 本書用的簽章演算法，配 SHA-256 |
 | **FUSE** | Filesystem in Userspace | 讓非 root 使用者在使用者空間實作檔案系統的介面。**跟晶片的 fuse 沒有關係**，同名不同物 |
-| **Fuse-Centric** | — | 產鑰匙路線一：加密金鑰與簽章公鑰雜湊**全燒進 fuse**。範例平台 STM32MP1x（§15） |
-| **Hybrid** | — | 產鑰匙路線二：fuse 只放公鑰雜湊，加密金鑰封成檔案放磁碟。範例平台 i.MX（§16） |
+| **Fuse-Centric** | — | 產鑰匙路線一：加密金鑰與簽章公鑰雜湊**全燒進 fuse**。範例平台 STM32MP1x（§20） |
+| **Hybrid** | — | 產鑰匙路線二：fuse 只放公鑰雜湊，加密金鑰封成檔案放磁碟。範例平台 i.MX（§21） |
 | **DEK blob** | — | hybrid 路線把加密金鑰封起來的產物。**必須在 CPU 已進 secure mode 時產**，否則封它的是一把假的 master key |
 | **SRK** | Super Root Key | i.MX / AHAB 的根金鑰。實際燒進 fuse 的是它的雜湊（`srktool` 算出來那串） |
 | **AHAB** | Advanced High Assurance Boot | NXP 新一代安全開機機制（HAB 的後繼）。`ahab_pki_tree.sh` 產的就是它的金鑰樹 |
 | **PKHTH / EDMK** | Public Key Hash Table Hash / Encrypted Device Master Key | STM32MP1x 的兩塊 fuse 區域：前者放公鑰雜湊，後者放加密金鑰 |
-| **Tivoization** | — | 用 GPL 軟體但靠硬體擋住使用者裝改版。名字來自 TiVo；FSF 稱這種硬體 proprietary tyrants（§17） |
+| **Tivoization** | — | 用 GPL 軟體但靠硬體擋住使用者裝改版。名字來自 TiVo；FSF 稱這種硬體 proprietary tyrants（§22） |
 | **Installation Information** | — | GPLv3 第 6 條的用語：讓使用者能把改過的版本裝回去並跑起來所需的一切資訊 |
-| **fw_printenv / fw_setenv** | — | 從 Linux 裡讀寫 U-Boot 環境變數的工具。攻擊者拿到 root 就能用（§21） |
+| **fw_printenv / fw_setenv** | — | 從 Linux 裡讀寫 U-Boot 環境變數的工具。攻擊者拿到 root 就能用（§26） |
 | **`init=`** | — | kernel 參數：PID 1 要從**真正的 rootfs**跑哪支程式。不指定就依序試 `/sbin/init` 等 |
 | **`rdinit=`** | — | kernel 參數：PID 1 要從 **initramfs** 跑哪支程式。不指定就跑 `/init`。附錄 B 的攻擊打的就是它 |
-| **BusyBox** | — | 把幾百個 Unix 工具包成一個執行檔的小工具集，嵌入式常用它做 initramfs。當 PID 1 時會試著扮演 init，**意外擋掉 `rdinit=/bin/sh`**（§21） |
-| **`.rodata`** | Read-Only Data | 執行檔／模組裡放編譯期寫死的唯讀常數的區段。`nm` 標小寫 `r` 的符號就在這。鑰匙寫死在程式裡就躺在這裡（§23） |
-| **tamper pin** | — | CPU 上專門接防拆感測器的輸入腳。接機殼開關、PCB 上的細導線、位移感測器等（§18） |
-| **passive / active tamper detection** | — | 被動＝盯一個固定電壓；主動＝送出變化訊號並期待即時收回一模一樣的。主動連線被剪都知道（§18） |
-| **zeroization** | 歸零／抹除 | 偵測到被拆時把揮發性記憶體裡的主鑰匙**清成 0**。不是藏起來，是讓它不存在（§18） |
-| **BBSM / SNVM** | Battery-Backed Secure Module / Secure Non-Volatile Module | CPU 裡靠專用電池供電的一小塊安全區，放 sentinel 和 master key（§19） |
-| **tampering battery** | 防拆電池 | 焊在主機板上、**不是系統主電池**的那顆。唯一任務是主電源斷掉時讓安全區還醒著（§19） |
-| **sentinel（暫存器）** | — | 安全區裡的警報旗標。斷電也記得；值不對就代表被動過或電池被拔（§19） |
-| **U-Boot metacode** | — | 書上自造的詞：**簡化過、為了好讀而寫的 U-Boot 腳本**，不是真的 U-Boot 語法（§25） |
-| **`part number`** | — | U-Boot 指令，把分割區的**標籤**換成**編號**（`root` → 3），因為 kernel 的 `root=` 要的是 `/dev/mmcblk2p3`（§25） |
-| **`sgdisk -e`** | — | 把 GPT 備份表搬到磁碟結尾。factory-reset 第一步要做，因為主機端做的映像檔沒有正確分割表（§27） |
-| **critical zone（臨界區）** | — | system-update 第 7 步之後就不能靠重開機救回來。進去前先把下次開機設成 factory 當保險（§28） |
-| **`bundle-set-bootmode.sh`** | — | 書上的工具，寫入 bootloader 環境變數決定下次開機模式（normal / factory / update）（§27、§28） |
-| **`bundle-update.sh`** | — | 書上的更新工具。A/B 方案的 system-update **完全靠它在使用者空間跑完**（§29） |
-| **`ab_selector`** | — | bootloader 環境變數，決定這次跑 a 邊還是 b 邊。A/B 更新的最後一步就是改它（§29） |
+| **BusyBox** | — | 把幾百個 Unix 工具包成一個執行檔的小工具集，嵌入式常用它做 initramfs。當 PID 1 時會試著扮演 init，**意外擋掉 `rdinit=/bin/sh`**（§26） |
+| **`.rodata`** | Read-Only Data | 執行檔／模組裡放編譯期寫死的唯讀常數的區段。`nm` 標小寫 `r` 的符號就在這。鑰匙寫死在程式裡就躺在這裡（§28） |
+| **tamper pin** | — | CPU 上專門接防拆感測器的輸入腳。接機殼開關、PCB 上的細導線、位移感測器等（§23） |
+| **passive / active tamper detection** | — | 被動＝盯一個固定電壓；主動＝送出變化訊號並期待即時收回一模一樣的。主動連線被剪都知道（§23） |
+| **zeroization** | 歸零／抹除 | 偵測到被拆時把揮發性記憶體裡的主鑰匙**清成 0**。不是藏起來，是讓它不存在（§23） |
+| **BBSM / SNVM** | Battery-Backed Secure Module / Secure Non-Volatile Module | CPU 裡靠專用電池供電的一小塊安全區，放 sentinel 和 master key（§24） |
+| **tampering battery** | 防拆電池 | 焊在主機板上、**不是系統主電池**的那顆。唯一任務是主電源斷掉時讓安全區還醒著（§24） |
+| **sentinel（暫存器）** | — | 安全區裡的警報旗標。斷電也記得；值不對就代表被動過或電池被拔（§24） |
+| **U-Boot metacode** | — | 書上自造的詞：**簡化過、為了好讀而寫的 U-Boot 腳本**，不是真的 U-Boot 語法（§14） |
+| **`part number`** | — | U-Boot 指令，把分割區的**標籤**換成**編號**（`root` → 3），因為 kernel 的 `root=` 要的是 `/dev/mmcblk2p3`（§14） |
+| **`sgdisk -e`** | — | 把 GPT 備份表搬到磁碟結尾。factory-reset 第一步要做，因為主機端做的映像檔沒有正確分割表（§16） |
+| **critical zone（臨界區）** | — | system-update 第 7 步之後就不能靠重開機救回來。進去前先把下次開機設成 factory 當保險（§17） |
+| **`bundle-set-bootmode.sh`** | — | 書上的工具，寫入 bootloader 環境變數決定下次開機模式（normal / factory / update）（§16、§17） |
+| **`bundle-update.sh`** | — | 書上的更新工具。A/B 方案的 system-update **完全靠它在使用者空間跑完**（§18） |
+| **`ab_selector`** | — | bootloader 環境變數，決定這次跑 a 邊還是 b 邊。A/B 更新的最後一步就是改它（§18） |
 
 ---
 
@@ -2984,11 +2986,11 @@ elif test ${bootmode} = update; then
 - 第 4 章 4.1 的**逐步指令**：STM32 與 i.MX 的產鑰匙、燒 fuse 完整流程
   （書頁 193–200｜PDF 210–217）。理由見 brief 第 4 節 ——
   指令綁死廠商，換晶片就用不上。
-- 第 3 章 A/B 三個流程**沒有各自從頭寫完整**，只寫了跟 Rescue 的差異（§29）。
-  理由：大部分內容會是在重述 §26–§28。
+- 第 3 章 A/B 三個流程**沒有各自從頭寫完整**，只寫了跟 Rescue 的差異（§18）。
+  理由：大部分內容會是在重述 §15–§17。
 
 > ~~附錄 B 特別值得補——它處理的是 §9 提到的 kernel command line 明文問題。~~
-> → **已補，見 §21–§24。**
+> → **已補，見 §26–§29。**
 
 ---
 

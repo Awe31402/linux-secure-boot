@@ -296,7 +296,7 @@ html{scroll-behavior:smooth;}
     <p class="eyebrow">讀書筆記 · 骨幹版</p>
     <h1>信任鏈：從 ROM code 到加密的 rootfs</h1>
     <p class="sub">Rodolfo Giometti, <em>Secure Boot Encryption with Linux: Implementation
-    for Embedded Developers</em>（Apress, 2026）第 1、2 章、第 3 章概念部分、第 4 章與附錄 B。
+    for Embedded Developers</em>（Apress, 2026）第 1、2 章、第 3 章概念部分、第 4 章與附錄 A、B。
     嵌入式 ARM 平台，不是 PC 的 UEFI + shim。</p>
     <div class="meta">
       <span>i.MX8 / i.MX9 / STM32MP1</span>
@@ -359,14 +359,18 @@ html{scroll-behavior:smooth;}
 <a class="nav-link" href="#s20"><span class="nav-mark">§15</span><span class="nav-text">路線一：Fuse-Centric（全部鎖進 fuse）</span></a>
 <a class="nav-link" href="#s21"><span class="nav-mark">§16</span><span class="nav-text">路線二：Hybrid（金鑰放磁碟上，但包起來）</span></a>
 <a class="nav-link" href="#s22"><span class="nav-mark">§17</span><span class="nav-text">Secure Boot 跟 GPLv3 打架</span></a>
-<div class="nav-part">第五部分：階段之間怎麼傳祕密（附錄 B）</div>
-<a class="nav-link" href="#s24"><span class="nav-mark">§18</span><span class="nav-text">破口：階段之間一定會交換資訊</span></a>
-<a class="nav-link" href="#s25"><span class="nav-mark">§19</span><span class="nav-text">修法一：把 rdinit= 從 kernel 裡挖掉</span></a>
-<a class="nav-link" href="#s26"><span class="nav-mark">§20</span><span class="nav-text">修法二：把鑰匙搬進 kernel——以及為什麼這招也守不住</span></a>
-<a class="nav-link" href="#s27"><span class="nav-mark">§21</span><span class="nav-text">附錄 B 到底告訴我們什麼</span></a>
-<a class="nav-link" href="#s28"><span class="nav-mark">§22</span><span class="nav-text">名詞小抄</span></a>
-<a class="nav-link" href="#s29"><span class="nav-mark">§23</span><span class="nav-text">書上沒講的（缺口清單）</span></a>
-<a class="nav-link" href="#s30"><span class="nav-text">一句話總結</span></a>
+<div class="nav-part">第五部分：有人拿螺絲起子（附錄 A）</div>
+<a class="nav-link" href="#s24"><span class="nav-mark">§18</span><span class="nav-text">有人把機殼打開了怎麼辦</span></a>
+<a class="nav-link" href="#s25"><span class="nav-mark">§19</span><span class="nav-text">那顆電池，和 sentinel 暫存器</span></a>
+<a class="nav-link" href="#s26"><span class="nav-mark">§20</span><span class="nav-text">系統跑起來之後：兩個檔案</span></a>
+<div class="nav-part">第六部分：階段之間怎麼傳祕密（附錄 B）</div>
+<a class="nav-link" href="#s28"><span class="nav-mark">§21</span><span class="nav-text">破口：階段之間一定會交換資訊</span></a>
+<a class="nav-link" href="#s29"><span class="nav-mark">§22</span><span class="nav-text">修法一：把 rdinit= 從 kernel 裡挖掉</span></a>
+<a class="nav-link" href="#s30"><span class="nav-mark">§23</span><span class="nav-text">修法二：把鑰匙搬進 kernel——以及為什麼這招也守不住</span></a>
+<a class="nav-link" href="#s31"><span class="nav-mark">§24</span><span class="nav-text">附錄 B 到底告訴我們什麼</span></a>
+<a class="nav-link" href="#s32"><span class="nav-mark">§25</span><span class="nav-text">名詞小抄</span></a>
+<a class="nav-link" href="#s33"><span class="nav-mark">§26</span><span class="nav-text">書上沒講的（缺口清單）</span></a>
+<a class="nav-link" href="#s34"><span class="nav-text">一句話總結</span></a>
       </div>
     </nav>
 
@@ -422,7 +426,7 @@ html{scroll-behavior:smooth;}
 都是你自己產、自己燒進晶片的。搜資料時關鍵字要用 <code>U-Boot</code>、<code>HAB</code>、<code>fitimage</code>、
 <code>CAAM</code>，而不是 <code>shim</code>、<code>MOK</code>、<code>sbsign</code>。</p>
 <p><strong>書的目標讀者</strong>是資深嵌入式開發者，所以很多名詞它直接用不解釋。
-這份筆記會把那些補上，統一收在 <a href="#22-名詞小抄">§22 名詞小抄</a>。</p>
+這份筆記會把那些補上，統一收在 <a href="#25-名詞小抄">§25 名詞小抄</a>。</p>
 <hr />
 <h1 id="s2" class="part">第一部分：加密的基本零件（第 1 章）</h1>
 <p>這一整章在回答一個問題：<strong>鑰匙要放哪裡，才不會被拿走？</strong></p>
@@ -2127,12 +2131,289 @@ contain the GPLv3 software components and must exclude the proprietary
 application.</p>
 </blockquote>
 <p class="pageref"><span>📖</span><strong>書頁 201–204</strong> ｜ PDF 頁 218–221 ｜ <a href="./linux-secure-boot.pdf#page=218">開啟 PDF</a></p>
-<h1 id="s23" class="part">第五部分：階段之間怎麼傳祕密（附錄 B）</h1>
-<p>第 4 章結束時，信任鏈看起來是完整的。這一篇把它拆給你看。</p>
+<h1 id="s23" class="part">第五部分：有人拿螺絲起子（附錄 A）</h1>
+<p>前面整本書防的都是<strong>軟體</strong>：改過的 bootloader、假的 kernel、被讀走的鑰匙。</p>
+<p>這一篇防的是<strong>有人把機殼打開</strong>。</p>
+<p>它補的是 §6 留下的標記——當時說「tamper detection 是信任鏈可以加上的強化，
+細節在附錄 A」。</p>
+<hr />
+<h2 id="s24"><span class="sec-mark">§18</span><span class="sec-label">有人把機殼打開了怎麼辦</span></h2>
+<h3>這在解決什麼問題</h3>
+<p><strong>實體入侵可以繞過幾乎所有軟體防護。</strong></p>
+<p>打開機殼、插一塊惡意硬體進去，或者把一塊善意的硬體拔掉——
+前面講的簽章、加密、信任鏈，全都不在這一層。</p>
+<p>書上點名的場景很具體，都是<strong>出事會很嚴重</strong>的地方：</p>
+<ul>
+<li><strong>IED / RTU / DCS</strong>——電網、瓦斯管線、油管的控制設備</li>
+<li><strong>維生與醫療設備</strong></li>
+<li><strong>智慧電表</strong>等計費量測系統</li>
+</ul>
+<blockquote class="cal cal-plain">
+<p>前兩類被動手腳可能造成<strong>災難性故障</strong>，最後一類則是<strong>大規模詐欺</strong>。</p>
+</blockquote>
+<h3>兩類偵測</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th><strong>External（外部）</strong></th>
+<th><strong>Internal（內部）</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>盯著什麼</td>
+<td>機殼、板子</td>
+<td><strong>晶片自己的運作環境</strong></td>
+</tr>
+<tr>
+<td>偵測方式</td>
+<td>CPU 的 <strong>tamper pin</strong> 接感測器</td>
+<td>CPU 自己監控</td>
+</tr>
+<tr>
+<td>具體例子</td>
+<td>開關（機殼一開就通/斷）、PCB 或機殼上印的<strong>細導線</strong>（鑽孔或撬開就斷）、位移／定位感測器</td>
+<td>電源電壓突降或突升、溫度過高或過低、系統時脈被動手腳</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>為什麼要有位移感測器</strong>：因為攻擊者可能<strong>不在現場拆</strong>，
+而是把整台機器<strong>拆下來搬回實驗室</strong>慢慢研究。
+智慧電表這類東西常裝在偏遠或公共可及的地方，所以這很實際。</p>
+<p><strong>為什麼要監控溫度</strong>：書上舉的例子是<strong>把晶片冷凍</strong>來竄改記憶體內容，
+或是加熱到過熱。</p>
+<h3 class="h3-key">🎯 passive 與 active tamper detection</h3>
+<p>同樣是讀感測器，有兩種做法，安全性差很多：</p>
+<p><strong>Passive（被動）</strong>：CPU 只是盯著一個<strong>固定的電壓準位</strong>。
+狀態一變（例如開關被打開），就觸發警報。</p>
+<p><strong>Active（主動）</strong>：CPU 從一支輸出腳送出一個<strong>會變化的訊號</strong>
+（通常是亂數或快速切換的訊號），並期待<strong>即時</strong>從一支輸入腳收到<strong>一模一樣的</strong>訊號。
+這兩支腳之間用一條穿過機殼的線或走線連起來。</p>
+<blockquote class="cal cal-plain">
+<p>差別在哪：被動只知道「開關現在是開還是關」；
+主動連<strong>那條線本身被剪斷或被短路</strong>都知道。
+書上直說 active「更精密，因此更安全」。</p>
+</blockquote>
+<h3>偵測到之後：反應要快，而且要毀屍滅跡</h3>
+<p>書上說，一套好的防拆系統，<strong>最關鍵的特性是它的反應</strong>——
+必須<strong>立即</strong>而且對敏感資料<strong>具破壞性</strong>。</p>
+<p>順序是：</p>
+<pre><code>1. 設定 sentinel（警報旗標，在一個專用暫存器裡）
+   ↓
+2. zeroization —— 把揮發性記憶體裡的敏感資料抹掉
+   通常就是【主加密鑰匙】，抹掉之後所有加密資料變成廢物
+   ↓
+3. 強制重開機，或把自己鎖在鎖定狀態，直到被解除
+</code></pre>
+<blockquote class="cal cal-plain">
+<p><strong>zeroization（歸零／抹除）</strong> = 主動把記憶體內容清成 0。
+重點不是「藏起來」，是<strong>讓它不存在</strong>——鑰匙沒了，磁碟上那堆密文
+對任何人（包括你自己）都永遠打不開。</p>
+</blockquote>
+<!-- -->
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.205 ｜ PDF p.222</p>
+<p>In high-security environments, the integrity of a system extends beyond the
+digital realm. In fact, a successful physical intrusion, such as opening a chassis
+and inserting a malicious hardware component or removing a benevolent one, allows
+an attacker to bypass many traditional software-based controls.</p>
+</blockquote>
+<!-- -->
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.207 ｜ PDF p.224</p>
+<p>Once a tampering access has been detected, the most critical feature of a good
+tampering system is its response, which must be immediate and destructive to
+sensitive data. Firstly, an alarm flag in a dedicated register (sentinel) is set;
+then the most common and crucial reaction is the zeroization (or erasure) of the
+volatile memory containing sensitive data (usually the master cryptographic keys
+to render all encrypted data unusable).</p>
+</blockquote>
+<p class="pageref"><span>📖</span><strong>書頁 205–208</strong> ｜ PDF 頁 222–225 ｜ <a href="./linux-secure-boot.pdf#page=222">開啟 PDF</a></p>
+<hr />
+<h2 id="s25"><span class="sec-mark">§19</span><span class="sec-label">那顆電池，和 sentinel 暫存器</span></h2>
+<h3>這在解決什麼問題</h3>
+<p>上一節的機制有個明顯的破綻：<strong>拔掉電源不就沒事了？</strong></p>
+<p>沒有電，CPU 不會跑，也就偵測不到你在拆它。</p>
+<h3>怎麼運作：CPU 分成兩區</h3>
+<pre><code>┌─────────────────────────────────────────┐
+│  CPU                                     │
+│  ┌──────────────┐  ┌──────────────────┐ │
+│  │  一般區        │  │  電池供電的安全區   │ │
+│  │  正常供電       │  │  BBSM / SNVS      │ │
+│  │               │  │  · sentinel 暫存器 │ │
+│  │               │  │  · master key      │ │
+│  └──────────────┘  └──────────────────┘ │
+│                            ↑             │
+└────────────────────────────┼─────────────┘
+                      【防拆電池】
+                   焊在主機板上，斷主電源也還在
+</code></pre>
+<p>（書上 Figure A-1）</p>
+<p><strong>BBSM</strong> = Battery-Backed Secure Module（也叫 Secure Non-Volatile Module / SNVM）。</p>
+<blockquote class="cal cal-warn">
+<p>⚠️ 書上特別澄清：這<strong>不是說整個系統靠電池供電</strong>，
+而是 CPU 裡的<strong>一小塊區域</strong>有自己的電池。</p>
+<p>這顆電池<strong>不是系統主電池</strong>（如果有的話），是另外一顆，
+焊死在主機板裡。書上叫它 <strong>tampering battery（防拆電池）</strong>。
+它唯一的任務就是：<strong>主電源不在的時候，讓安全區還醒著。</strong></p>
+</blockquote>
+<p>而且這塊區域<strong>Normal World 直接碰不到</strong>，必須透過有特權的 supervisor 存取——
+在 ARM 上就是 <strong>TF-A 或 OP-TEE</strong>（看當下在哪個開機階段）。這就是 §9 的兩個世界。</p>
+<h3>sentinel 暫存器怎麼用</h3>
+<p><strong>sentinel</strong> 是安全區裡的一個暫存器，因為有電池撐著，<strong>斷電也記得裡面的值</strong>。</p>
+<p>用法很單純：</p>
+<pre><code>初始化時（產線或解除程序）：把 sentinel 寫成一個約定好的值
+                              ↓
+每次開機：supervisor 讀 sentinel
+                              ↓
+          值對 → 正常開機
+          值不對（含恢復成預設的 0）→ 系統被動過，或【電池被拔掉了】
+</code></pre>
+<p><strong>所以連「電池被移除」都偵測得到</strong>——電池一拔，sentinel 就掉回預設值。</p>
+<h3 class="h3-key">🎯 一個容易踩的坑</h3>
+<p>書上明白點出：</p>
+<blockquote class="cal cal-plain">
+<p><strong>sentinel 和 master key 兩個暫存器的預設值都是 0</strong>，
+所以在「防拆電池故障」的情況下，<strong>不能拿 master key 暫存器代替 sentinel 用</strong>。
+而且大多數情況下，<strong>master key 暫存器是唯寫的</strong>。</p>
+</blockquote>
+<p>換句話說：你沒辦法靠「讀 master key 是不是 0」來判斷有沒有被動過。
+必須有一個獨立的 sentinel。</p>
+<h3>誰可以設定 sentinel</h3>
+<p>只有兩種場合，而且<strong>都必須由專門且經過授權的人員執行</strong>：</p>
+<ol>
+<li><strong>產線生產時</strong></li>
+<li><strong>防拆解除（tampering recovery）時</strong></li>
+</ol>
+<p>產線的作法是燒一個<strong>特製的 bootloader</strong>（打開 <code>CONFIG_TAMPERING_INIT_FORCED</code>），
+它開機後自動設定好 sentinel，然後就 hang 住。</p>
+<p>解除程序則要有個辦法告訴系統「現在要解除」。書上給了三種強度：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>作法</th>
+<th>怎麼判斷「要解除」</th>
+<th>書上的評價</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>GPIO</strong></td>
+<td>讀一支 GPIO（接 PCB 上的開關）</td>
+<td>「最簡單，也<strong>最不安全</strong>」</td>
+</tr>
+<tr>
+<td><strong>EEPROM</strong></td>
+<td>讀一顆用外部專用硬體才能寫的 EEPROM</td>
+<td>比較精密、比較安全</td>
+</tr>
+<tr>
+<td><strong>完全不准解除</strong></td>
+<td>那兩個函式直接寫死</td>
+<td>極端方案；只能靠專用 bootloader 重新初始化</td>
+</tr>
+</tbody>
+</table></div>
+<blockquote class="cal cal-gap">
+<p>📌 書上說<strong>沒有固定規則</strong>，看你要多高的安全等級。
+並且明講：真正該做的是在解除前<strong>先驗證操作者身分</strong>
+（例如透過序列埠跑 challenge-response 認證協定），
+但這<strong>高度依賴系統，不在本書涵蓋範圍</strong>。</p>
+</blockquote>
+<!-- -->
+<blockquote class="cal cal-warn">
+<p>⚠️ <strong>這一節的程式碼我沒辦法引用。</strong>
+書上 A.1 有好幾段 C 虛擬碼（<code>is_tampering_battery_ok()</code>、
+<code>setup_tampering_battery_status()</code>、<code>is_tampering_init_forced()</code> 等），
+但 PDF 抽出來的文字裡 <strong><code>if</code> 的條件和函式主體大量掉字</strong>。
+依規則<strong>不補字重建</strong>——要看程式碼請翻書頁 209–213（PDF 226–230）。
+上面講的機制本身不受影響。</p>
+</blockquote>
+<!-- -->
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.207 ｜ PDF p.224</p>
+<p>[We are not] referring to a whole battery-backed system but just a single region of
+the CPU typically named as Battery-Backed Secure Module (or Secure Non-Volatile
+Module or S[NVM]) [powered by] a battery that is not the main system battery (when
+present), and it is well embedded in the main board. We can name it as tampering
+battery, and its only target is to keep the secure module powered on even when the
+main power is not present.</p>
+</blockquote>
+<!-- -->
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.210 ｜ PDF p.227</p>
+<p>Since the sentinel register is battery-backed, it retains the value
+SENTINEL_REGISTER_VALUE even if the main power is removed, and the system must be
+considered tampered in the case it holds a different value (or the default reset
+value).</p>
+</blockquote>
+<p class="pageref"><span>📖</span><strong>書頁 209–213</strong> ｜ PDF 頁 226–230 ｜ <a href="./linux-secure-boot.pdf#page=226">開啟 PDF</a></p>
+<hr />
+<h2 id="s26"><span class="sec-mark">§20</span><span class="sec-label">系統跑起來之後：兩個檔案</span></h2>
+<h3>這在解決什麼問題</h3>
+<p>到這裡 <strong>Secure Boot 已經下班了</strong>（§8）。但機殼還是可能被打開。</p>
+<p>所以防拆偵測<strong>在系統執行期間繼續運作</strong>——書上說這已經超出 Secure Boot 的職責，
+只是「為了完整性」順帶講。</p>
+<h3>怎麼運作</h3>
+<p>偵測到之後，supervisor 有兩條路：</p>
+<ol>
+<li><strong>直接強制重開機</strong> → 回到 §19 那套開機檢查，系統會 hang 住</li>
+<li><strong>通知使用者空間</strong> → 透過 <strong>sysfs</strong> 介面或 char device</li>
+</ol>
+<p>走第二條的話，你要自己寫一個 <strong>daemon</strong> 定期監看，
+偵測到就採取適當行動——停掉主程式、刪掉某些檔案等等。</p>
+<h3>i.MX 上長什麼樣</h3>
+<p>CPU 的狀態就掛在 <code>/sys/devices/soc0/</code> 底下：</p>
+<pre><code class="language-bash">$ cat /sys/devices/soc0/family
+Freescale i.MX
+$ cat /sys/devices/soc0/soc_id
+i.MX8MQ
+$ cat /sys/devices/soc0/serial_number
+160C89D6D8F804A2
+</code></pre>
+<p>其中兩個是這篇的重點：</p>
+<pre><code class="language-bash">$ cat /sys/devices/soc0/secured     # 這台機器在不在安全模式
+yes
+$ cat /sys/devices/soc0/tampered    # 有沒有被動過
+no
+</code></pre>
+<blockquote class="cal cal-plain">
+<p><strong>定期讀 <code>tampered</code> 這個檔案，就是整套防拆機制在使用者空間的全部介面。</strong></p>
+</blockquote>
+<h3 class="h3-key">🎯 附錄 A 接回哪裡</h3>
+<ul>
+<li>補上 <strong>§6</strong> 的標記：tamper detection 是信任鏈可以加的強化，這就是它的細節。</li>
+<li>延伸 <strong>§8</strong> 的結論：Secure Boot 掛載完 rootfs 就下班了 ——
+  但<strong>實體防護沒有下班</strong>，它是另一套機制，由 supervisor 和一個 daemon 接手。</li>
+<li>呼應 <strong>§4</strong>：那把 master key 平常靠硬體保護；
+  被拆的時候，<strong>它是第一個被抹掉的東西</strong>。</li>
+</ul>
+<h3>📌 這篇沒講的</h3>
+<ul>
+<li><strong>解除程序的身分驗證</strong>（challenge-response）—— 明說「高度依賴系統，不在本書範圍」</li>
+<li><strong>哪些 CPU 支援哪些偵測</strong> —— 只用 i.MX 舉例，其他平台要自己查</li>
+<li><strong>防拆電池沒電了怎麼辦</strong> —— 書上只說「電池故障」會讓 sentinel 掉回預設值，
+  <strong>沒有討論正常壽命耗盡的維護問題</strong></li>
+</ul>
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.213 ｜ PDF p.230</p>
+<p>When the system is up and running, the Secure Boot duties are finished; however,
+for the sake of completeness, we will show how the tampering detection may work.
+If a tampering event is detected, the supervisor may force a reboot [...] or it can
+send to the user space a notice (usually via the sysfs interface or a char device).
+In this latter case, we can use a system daemon that monitors the tampering events
+and then does a proper action, such as stopping the main program or deleting some
+files, etc.</p>
+</blockquote>
+<p class="pageref"><span>📖</span><strong>書頁 213–215</strong> ｜ PDF 頁 230–232 ｜ <a href="./linux-secure-boot.pdf#page=230">開啟 PDF</a></p>
+<hr />
+<h1 id="s27" class="part">第六部分：階段之間怎麼傳祕密（附錄 B）</h1>
+<p>附錄 A 防的是有人動硬體。這一篇回到軟體，而且是<strong>全書唯一示範信任鏈怎麼被打穿</strong>的地方。</p>
 <p>它補的正是 §9 留下的那個標記：<strong>bootloader 傳給 kernel 的那行參數是明文的，
 那會怎樣？</strong></p>
 <hr />
-<h2 id="s24"><span class="sec-mark">§18</span><span class="sec-label">破口：階段之間一定會交換資訊</span></h2>
+<h2 id="s28"><span class="sec-mark">§21</span><span class="sec-label">破口：階段之間一定會交換資訊</span></h2>
 <h3>這在解決什麼問題</h3>
 <p>理想上，信任鏈的每一棒<strong>應該互不依賴</strong>——每一棒做什麼，不該取決於上一棒告訴它什麼。
 這樣鏈才不會因為「交換資訊」而斷掉。</p>
@@ -2225,7 +2506,7 @@ access to the initramfs and then execute evil code or read secrets!</p>
 </blockquote>
 <p class="pageref"><span>📖</span><strong>書頁 217–222</strong> ｜ PDF 頁 233–238 ｜ <a href="./linux-secure-boot.pdf#page=233">開啟 PDF</a></p>
 <hr />
-<h2 id="s25"><span class="sec-mark">§19</span><span class="sec-label">修法一：把 rdinit= 從 kernel 裡挖掉</span></h2>
+<h2 id="s29"><span class="sec-mark">§22</span><span class="sec-label">修法一：把 rdinit= 從 kernel 裡挖掉</span></h2>
 <h3>這在解決什麼問題</h3>
 <p>BusyBox 那道意外的防線，<strong>一個包裝腳本就繞過了</strong>：</p>
 <pre><code class="language-bash">#!/bin/sh
@@ -2275,7 +2556,7 @@ done for the init= kernel option argument if needed.</p>
 </blockquote>
 <p class="pageref"><span>📖</span><strong>書頁 223–226</strong> ｜ PDF 頁 239–242 ｜ <a href="./linux-secure-boot.pdf#page=239">開啟 PDF</a></p>
 <hr />
-<h2 id="s26"><span class="sec-mark">§20</span><span class="sec-label">修法二：把鑰匙搬進 kernel——以及為什麼這招也守不住</span></h2>
+<h2 id="s30"><span class="sec-mark">§23</span><span class="sec-label">修法二：把鑰匙搬進 kernel——以及為什麼這招也守不住</span></h2>
 <h3>這在解決什麼問題</h3>
 <p>就算 <code>rdinit=</code> 擋掉了，鑰匙<strong>還是躺在 initramfs 的 <code>/etc/rootfs.key</code> 裡</strong>，
 是一個檔案。只要有任何方法讀到那個檔案系統，鑰匙就沒了。</p>
@@ -2326,7 +2607,7 @@ Contents of section .rodata:
 </code></pre>
 <p>offset <code>0x18</code> 開始的 32 bytes 就是鑰匙：
 <code>24ccd690 79643e83 ... 3fc7fb73 d8574209</code></p>
-<p><strong>跟 §19 裡 <code>cat /etc/rootfs.key</code> 讀到的完全一樣。</strong></p>
+<p><strong>跟 §22 裡 <code>cat /etc/rootfs.key</code> 讀到的完全一樣。</strong></p>
 <h3>所以這招擋住了什麼、沒擋住什麼</h3>
 <div class="table-wrap"><table>
 <thead>
@@ -2365,7 +2646,7 @@ bytes at offset 0x18, that is, 24ccd690 79643e83 35e2d8db bf81cb54 ad365b79
 </blockquote>
 <p class="pageref"><span>📖</span><strong>書頁 226–236</strong> ｜ PDF 頁 242–252 ｜ <a href="./linux-secure-boot.pdf#page=242">開啟 PDF</a></p>
 <hr />
-<h2 id="s27"><span class="sec-mark">§21</span><span class="sec-label">附錄 B 到底告訴我們什麼</span></h2>
+<h2 id="s31"><span class="sec-mark">§24</span><span class="sec-label">附錄 B 到底告訴我們什麼</span></h2>
 <h3 class="h3-key">🎯 它沒有給你一個安全的答案</h3>
 <p>三節讀下來，形狀是這樣的：</p>
 <pre><code>環境變數是明文        → 攻擊者改 rdinit= 拿到 shell
@@ -2398,8 +2679,7 @@ BusyBox 那道防線      → 一個包裝腳本就繞過
 它的價值是讓你知道洞在哪，而不是把洞補起來。</p>
 </blockquote>
 <p class="pageref"><span>📖</span><strong>書頁 217–236</strong> ｜ PDF 頁 233–252 ｜ <a href="./linux-secure-boot.pdf#page=233">開啟 PDF</a></p>
-<hr />
-<h2 id="s28"><span class="sec-mark">§22</span><span class="sec-label">名詞小抄</span></h2>
+<h2 id="s32"><span class="sec-mark">§25</span><span class="sec-label">名詞小抄</span></h2>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -2617,7 +2897,7 @@ BusyBox 那道防線      → 一個包裝腳本就繞過
 <tr>
 <td><strong>fw_printenv / fw_setenv</strong></td>
 <td>—</td>
-<td>從 Linux 裡讀寫 U-Boot 環境變數的工具。攻擊者拿到 root 就能用（§18）</td>
+<td>從 Linux 裡讀寫 U-Boot 環境變數的工具。攻擊者拿到 root 就能用（§21）</td>
 </tr>
 <tr>
 <td><strong><code>init=</code></strong></td>
@@ -2632,17 +2912,47 @@ BusyBox 那道防線      → 一個包裝腳本就繞過
 <tr>
 <td><strong>BusyBox</strong></td>
 <td>—</td>
-<td>把幾百個 Unix 工具包成一個執行檔的小工具集，嵌入式常用它做 initramfs。當 PID 1 時會試著扮演 init，<strong>意外擋掉 <code>rdinit=/bin/sh</code></strong>（§18）</td>
+<td>把幾百個 Unix 工具包成一個執行檔的小工具集，嵌入式常用它做 initramfs。當 PID 1 時會試著扮演 init，<strong>意外擋掉 <code>rdinit=/bin/sh</code></strong>（§21）</td>
 </tr>
 <tr>
 <td><strong><code>.rodata</code></strong></td>
 <td>Read-Only Data</td>
-<td>執行檔／模組裡放編譯期寫死的唯讀常數的區段。<code>nm</code> 標小寫 <code>r</code> 的符號就在這。鑰匙寫死在程式裡就躺在這裡（§20）</td>
+<td>執行檔／模組裡放編譯期寫死的唯讀常數的區段。<code>nm</code> 標小寫 <code>r</code> 的符號就在這。鑰匙寫死在程式裡就躺在這裡（§23）</td>
+</tr>
+<tr>
+<td><strong>tamper pin</strong></td>
+<td>—</td>
+<td>CPU 上專門接防拆感測器的輸入腳。接機殼開關、PCB 上的細導線、位移感測器等（§18）</td>
+</tr>
+<tr>
+<td><strong>passive / active tamper detection</strong></td>
+<td>—</td>
+<td>被動＝盯一個固定電壓；主動＝送出變化訊號並期待即時收回一模一樣的。主動連線被剪都知道（§18）</td>
+</tr>
+<tr>
+<td><strong>zeroization</strong></td>
+<td>歸零／抹除</td>
+<td>偵測到被拆時把揮發性記憶體裡的主鑰匙<strong>清成 0</strong>。不是藏起來，是讓它不存在（§18）</td>
+</tr>
+<tr>
+<td><strong>BBSM / SNVM</strong></td>
+<td>Battery-Backed Secure Module / Secure Non-Volatile Module</td>
+<td>CPU 裡靠專用電池供電的一小塊安全區，放 sentinel 和 master key（§19）</td>
+</tr>
+<tr>
+<td><strong>tampering battery</strong></td>
+<td>防拆電池</td>
+<td>焊在主機板上、<strong>不是系統主電池</strong>的那顆。唯一任務是主電源斷掉時讓安全區還醒著（§19）</td>
+</tr>
+<tr>
+<td><strong>sentinel（暫存器）</strong></td>
+<td>—</td>
+<td>安全區裡的警報旗標。斷電也記得；值不對就代表被動過或電池被拔（§19）</td>
 </tr>
 </tbody>
 </table></div>
 <hr />
-<h2 id="s29"><span class="sec-mark">§23</span><span class="sec-label">書上沒講的（缺口清單）</span></h2>
+<h2 id="s33"><span class="sec-mark">§26</span><span class="sec-label">書上沒講的（缺口清單）</span></h2>
 <p>書本自己明說「不在範圍」的東西，之後想深入就從這裡找：</p>
 <div class="table-wrap"><table>
 <thead>
@@ -2708,6 +3018,16 @@ BusyBox 那道防線      → 一個包裝腳本就繞過
 <td>「真實應用不該用模組」，但<strong>沒給替代方案</strong>（書頁 226｜PDF 242）</td>
 <td>附錄 B 只示範洞在哪，沒補洞</td>
 </tr>
+<tr>
+<td><strong>防拆解除的身分驗證</strong></td>
+<td>「高度依賴系統，不在本書涵蓋範圍」（書頁 213｜PDF 230）</td>
+<td>沒有它，解除程序就是「誰按到開關誰就能解除」</td>
+</tr>
+<tr>
+<td><strong>防拆電池的壽命維護</strong></td>
+<td>只說「電池故障」會讓 sentinel 掉回預設值</td>
+<td>電池正常耗盡怎麼辦，書上沒討論</td>
+</tr>
 </tbody>
 </table></div>
 <p>書上<strong>第 4 章</strong>自己說不講的：</p>
@@ -2738,14 +3058,13 @@ BusyBox 那道防線      → 一個包裝腳本就繞過
   factory-reset / system-update（書頁 118–189｜PDF 136–207）</li>
 <li>第 4 章 4.1 的<strong>逐步指令</strong>：STM32 與 i.MX 的產鑰匙、燒 fuse 完整流程
   （書頁 193–200｜PDF 210–217）。這是刻意的取捨，理由見 brief 第 4 節</li>
-<li>附錄 A：防拆偵測（tamper detection）（書頁 205–｜PDF 222–）</li>
 </ul>
 <blockquote class="cal cal-plain">
 <p>~~附錄 B 特別值得補——它處理的是 §9 提到的 kernel command line 明文問題。~~
-→ <strong>已補，見 §18–§21。</strong></p>
+→ <strong>已補，見 §21–§24。</strong></p>
 </blockquote>
 <hr />
-<h2 id="s30">一句話總結</h2>
+<h2 id="s34">一句話總結</h2>
 <blockquote class="cal cal-plain">
 <p><strong>Secure Boot = 一棒接一棒的驗簽 + 解密，
 從燒死在晶片裡的 ROM code 開始，到掛載加密的 rootfs 為止。
@@ -2764,6 +3083,13 @@ BusyBox 那道防線      → 一個包裝腳本就繞過
 <p><strong>至於中間那些一棒傳一棒的參數：它們是明文的。
 附錄 B 花了 20 頁證明這件事有多好鑽，
 然後老實說，它也沒有答案。</strong></p>
+</blockquote>
+<!-- -->
+
+<blockquote class="cal cal-plain">
+<p><strong>而這一切的前提是沒有人把機殼打開。
+真被打開了，最後一道防線不是再驗一次簽章——
+是把鑰匙抹掉，讓那顆硬碟對誰都打不開。</strong></p>
 </blockquote>
     </article>
   </div>

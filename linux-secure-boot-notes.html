@@ -296,7 +296,7 @@ html{scroll-behavior:smooth;}
     <p class="eyebrow">讀書筆記 · 骨幹版</p>
     <h1>信任鏈：從 ROM code 到加密的 rootfs</h1>
     <p class="sub">Rodolfo Giometti, <em>Secure Boot Encryption with Linux: Implementation
-    for Embedded Developers</em>（Apress, 2026）第 1、2 章、第 3 章概念部分、第 4 章與附錄 A、B。
+    for Embedded Developers</em>（Apress, 2026）全書：第 1–4 章與附錄 A、B。
     嵌入式 ARM 平台，不是 PC 的 UEFI + shim。</p>
     <div class="meta">
       <span>i.MX8 / i.MX9 / STM32MP1</span>
@@ -368,9 +368,16 @@ html{scroll-behavior:smooth;}
 <a class="nav-link" href="#s29"><span class="nav-mark">§22</span><span class="nav-text">修法一：把 rdinit= 從 kernel 裡挖掉</span></a>
 <a class="nav-link" href="#s30"><span class="nav-mark">§23</span><span class="nav-text">修法二：把鑰匙搬進 kernel——以及為什麼這招也守不住</span></a>
 <a class="nav-link" href="#s31"><span class="nav-mark">§24</span><span class="nav-text">附錄 B 到底告訴我們什麼</span></a>
-<a class="nav-link" href="#s32"><span class="nav-mark">§25</span><span class="nav-text">名詞小抄</span></a>
-<a class="nav-link" href="#s33"><span class="nav-mark">§26</span><span class="nav-text">書上沒講的（缺口清單）</span></a>
-<a class="nav-link" href="#s34"><span class="nav-text">一句話總結</span></a>
+<div class="nav-part">第七部分：Rescue 三個流程怎麼跑（第 3 章 3.1）</div>
+<a class="nav-link" href="#s33"><span class="nav-mark">§25</span><span class="nav-text">先看骨架：換的不是程式，是變數</span></a>
+<a class="nav-link" href="#s34"><span class="nav-mark">§26</span><span class="nav-text">Rescue — normal boot</span></a>
+<a class="nav-link" href="#s35"><span class="nav-mark">§27</span><span class="nav-text">Rescue — factory-reset（10 步）</span></a>
+<a class="nav-link" href="#s36"><span class="nav-mark">§28</span><span class="nav-text">Rescue — system-update（13 步）</span></a>
+<div class="nav-part">第八部分：A/B 差在哪（第 3 章 3.2）</div>
+<a class="nav-link" href="#s38"><span class="nav-mark">§29</span><span class="nav-text">三個流程的 delta</span></a>
+<a class="nav-link" href="#s39"><span class="nav-mark">§30</span><span class="nav-text">名詞小抄</span></a>
+<a class="nav-link" href="#s40"><span class="nav-mark">§31</span><span class="nav-text">書上沒講的（缺口清單）</span></a>
+<a class="nav-link" href="#s41"><span class="nav-text">一句話總結</span></a>
       </div>
     </nav>
 
@@ -426,7 +433,7 @@ html{scroll-behavior:smooth;}
 都是你自己產、自己燒進晶片的。搜資料時關鍵字要用 <code>U-Boot</code>、<code>HAB</code>、<code>fitimage</code>、
 <code>CAAM</code>，而不是 <code>shim</code>、<code>MOK</code>、<code>sbsign</code>。</p>
 <p><strong>書的目標讀者</strong>是資深嵌入式開發者，所以很多名詞它直接用不解釋。
-這份筆記會把那些補上，統一收在 <a href="#25-名詞小抄">§25 名詞小抄</a>。</p>
+這份筆記會把那些補上，統一收在 <a href="#30-名詞小抄">§30 名詞小抄</a>。</p>
 <hr />
 <h1 id="s2" class="part">第一部分：加密的基本零件（第 1 章）</h1>
 <p>這一整章在回答一個問題：<strong>鑰匙要放哪裡，才不會被拿走？</strong></p>
@@ -2679,7 +2686,443 @@ BusyBox 那道防線      → 一個包裝腳本就繞過
 它的價值是讓你知道洞在哪，而不是把洞補起來。</p>
 </blockquote>
 <p class="pageref"><span>📖</span><strong>書頁 217–236</strong> ｜ PDF 頁 233–252 ｜ <a href="./linux-secure-boot.pdf#page=233">開啟 PDF</a></p>
-<h2 id="s32"><span class="sec-mark">§25</span><span class="sec-label">名詞小抄</span></h2>
+<h1 id="s32" class="part">第七部分：Rescue 三個流程怎麼跑（第 3 章 3.1）</h1>
+<p>到這裡為止，筆記講的都是<strong>概念</strong>。這一部分不一樣：它走的是書上那份
+<strong>參考實作</strong>，一步一步看它到底做了什麼。</p>
+<blockquote class="cal cal-warn">
+<p>⚠️ <strong>先講清楚兩件事，免得誤會</strong></p>
+<p><strong>1. 書上沒有給可以直接跑的腳本。</strong> 它用 <code>...</code> 省略程式碼，
+並明講那是「a possible implementation」（一種可能的實作）。
+所以這幾節是<strong>參考實作的導讀</strong>，不是照著打就會動的 SOP。</p>
+<p><strong>2. PDF 抽字有掉行。</strong> 有幾段 shell 腳本 pdftotext 沒抽乾淨
+（縮排的續行、函式參數整段消失）。依規矩<strong>不補字重建</strong> ——
+抽不出來的地方我會明寫，並指向書頁。
+<strong>每一步在做什麼、為什麼需要，不受影響。</strong></p>
+</blockquote>
+<hr />
+<h2 id="s33"><span class="sec-mark">§25</span><span class="sec-label">先看骨架：換的不是程式，是變數</span></h2>
+<h3>這在解決什麼問題</h3>
+<p>第 3 章有六個流程（Rescue / A/B 各三個），看起來很多。
+但它們<strong>共用同一個骨架</strong>，先把骨架看懂，剩下的就只是差異。</p>
+<h3>骨架長這樣</h3>
+<pre><code>U-Boot
+ │  一組初始變數
+ │    schema=rescue  bootname=boot  rootname=root
+ │    image=fitimage bootmode=normal
+ │
+ ├─ 看 bootmode 決定改哪幾個變數 ──┐
+ │    normal  → 幾乎不改             │  這就是全部的魔法
+ │    factory → bootname 指向 factory│
+ │    update  → bootname 指向 data   │
+ │                                   ┘
+ ├─ part number：把分割區「名字」換成「編號」
+ │    bootpart=2   rootpart=3
+ │
+ └─ 組出 bootargs → bootm
+        ↓
+kernel
+ │  命令列帶著 initramfs_normal / _factory / _update
+ │  以及 device、boot_schema、root_name 三個參數
+        ↓
+init（initramfs 裡，同一支程式）
+    看 initramfs_* 決定跑哪一段
+</code></pre>
+<h3 class="h3-key">🎯 整章最重要的一句話</h3>
+<blockquote class="cal cal-plain">
+<p><strong>三個流程用的是同一份 U-Boot 程式碼和同一支 init。
+換的不是程式，是變數。</strong></p>
+</blockquote>
+<p><code>bootmode</code> 決定 U-Boot 去哪裡拿 fitimage，
+<code>initramfs_*</code> 決定 init 跑哪一段。就這樣。</p>
+<h3>名詞</h3>
+<ul>
+<li><strong>U-Boot metacode</strong>：書上自己造的詞。它說這是<strong>簡化過的 U-Boot 腳本</strong>，
+  為了好讀而寫，<strong>不是真的 U-Boot 語法</strong>。</li>
+<li><strong><code>part number</code></strong>：U-Boot 指令，把分割區的<strong>標籤</strong>（<code>boot</code>、<code>root</code>）
+  換成<strong>編號</strong>（2、3）。因為 kernel 的 <code>root=</code> 要的是 <code>/dev/mmcblk2p3</code> 這種東西。</li>
+</ul>
+<h3>ℹ️ kernel 傳給使用者空間的三個參數</h3>
+<pre><code>device=/dev/mmcblk2     哪顆儲存裝置
+boot_schema=rescue      用哪種方案
+root_name=root          root 分割區叫什麼名字
+</code></pre>
+<p>kernel 不認得這三個，會原封不動丟給使用者空間——
+<strong>init 就是靠讀它們知道自己該做什麼</strong>。§9 看到的那行
+<code>Unknown kernel command line parameters ... will be passed to user space</code>
+講的就是這件事。</p>
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.119 ｜ PDF p.137</p>
+<p>We mention U-Boot metacode because we mean we are using a simplified version of
+real U-Boot scripting code to be more readable and to better understand what U-Boot
+really does.</p>
+</blockquote>
+<p class="pageref"><span>📖</span><strong>書頁 118–121</strong> ｜ PDF 頁 136–139 ｜ <a href="./linux-secure-boot.pdf#page=136">開啟 PDF</a></p>
+<hr />
+<h2 id="s34"><span class="sec-mark">§26</span><span class="sec-label">Rescue — normal boot</span></h2>
+<h3>U-Boot 這邊：幾乎什麼都不用做</h3>
+<p><code>schema=rescue</code> + <code>bootmode=normal</code> <strong>就是預設值</strong>，所以那個 <code>if</code> 分支裡
+基本上沒事做。接著：</p>
+<pre><code>part number mmc ${mmcdev} $bootname bootpart    # boot  → 2
+part number mmc ${mmcdev} $rootname rootpart    # root  → 3
+</code></pre>
+<p>然後組出命令列：</p>
+<pre><code>device=/dev/mmcblk2
+root=/dev/mmcblk2p3
+initramfs_normal
+boot_schema=rescue
+root_name=root
+</code></pre>
+<h3>init 這邊：四步</h3>
+<p><strong>步驟 1｜掛 boot 分割區，載入鑰匙</strong></p>
+<pre><code class="language-bash">bootdev=$(get_device_by_label $device boot)
+mount $bootdev /boot || fatal &quot;cannot mount boot partition&quot;
+caam-keygen import /boot/rootfs.key.bb rootfs.key
+umount /boot
+</code></pre>
+<p><code>rootfs.key.bb</code> 就是 §13 在 <code>/boot/</code> 裡看到的那個檔案。
+<code>caam-keygen import</code> 把它解封成 <code>/etc/caam/rootfs.key</code>。</p>
+<blockquote class="cal cal-warn">
+<p>⚠️ 書上明說<strong>這一步是廠商專屬的</strong>：他們的 CPU 有 CAAM，
+別的 CPU 得換做法（例如 §4 的 trusted key）。</p>
+</blockquote>
+<p><strong>步驟 2｜鑰匙進 keyring，建立 dm-crypt 裝置</strong></p>
+<pre><code class="language-bash">sh -c &quot;keyctl new_session ; \
+       keyctl padd logon logkey: @s &lt; /etc/caam/rootfs.key ; \
+       dmsetup create root --table \&quot;0 $(get_blockdev_size ${rootdev}) \
+         crypt capi:tk(cbc(aes))-plain :36:logon:logkey: 0 ${rootdev} 0\&quot;&quot;
+dmsetup mknodes root
+rootdev=&quot;/dev/mapper/root&quot;
+</code></pre>
+<p><strong>§5 講的每一個零件都在這裡</strong>：<code>logon</code> key、<code>tk(cbc(aes))</code>、<code>:36:</code> 的長度、
+最後那個不能漏的冒號。書上說這行 <code>dmsetup create root</code>
+<strong>就是整個 root filesystem 加密的核心</strong>。</p>
+<p>為什麼要包一層 <code>sh -c</code>？書上給了兩個理由：
+避開鑰匙存取權限的問題，以及<strong>讓 session 結束時鑰匙自動被 unlink</strong>。</p>
+<p><strong>步驟 3｜檢查並掛載</strong></p>
+<pre><code class="language-bash">fsck.ext4 -y $rootdev
+wait_for_blockdev $rootdev || fatal &quot;no block device!&quot;
+mount $rootdev $ROOT_DIR || fatal &quot;cannot mount real rootfs!&quot;
+</code></pre>
+<p><code>wait_for_blockdev</code> 是等 kernel 把區塊裝置 probe 完——
+<strong>這時候它不一定準備好了</strong>。</p>
+<p><strong>步驟 4｜換到真正的 rootfs</strong></p>
+<pre><code class="language-bash">move_mountpoint /dev /proc /sys /tmp
+cp --parents /etc/rootfs.sign.key $ROOT_DIR
+cp --parents /etc/caam/rootfs.key $ROOT_DIR
+exec switch_root -c /dev/console $ROOT_DIR ${init:-/sbin/init}
+fatal &quot;System hangs!&quot;        # 走到這裡代表出事了
+</code></pre>
+<p><strong>§9 講的 <code>exec switch_root</code> 在這裡有了完整版本</strong>：
+<code>-c /dev/console</code> 指定 console、<code>$ROOT_DIR</code> 是新的 root、
+<code>${init:-/sbin/init}</code> 是要跑的 init（沒指定就用預設）。</p>
+<blockquote class="cal cal-key">
+<p>🎯 注意 <code>${init:-...}</code> 這個寫法——<strong>init 是可以從 kernel 命令列指定的</strong>。
+這正是 §21 那個攻擊打的地方。書上自己在這裡就標了註記，
+叫讀者去看附錄 B。</p>
+</blockquote>
+<!-- -->
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.123 ｜ PDF p.141</p>
+<p>[...] the dmsetup mknodes command is to force the creation of the block device
+/dev/mapper/root, while the significant thing is the dmsetup create root command.
+This is the core of the root filesystem encryption!</p>
+</blockquote>
+<p class="pageref"><span>📖</span><strong>書頁 118–128</strong> ｜ PDF 頁 136–146 ｜ <a href="./linux-secure-boot.pdf#page=136">開啟 PDF</a></p>
+<hr />
+<h2 id="s35"><span class="sec-mark">§27</span><span class="sec-label">Rescue — factory-reset（10 步）</span></h2>
+<h3>U-Boot 這邊：只改一件事</h3>
+<pre><code>bootname 指向 factory（而不是 boot）
+</code></pre>
+<p>書上把這件事翻成白話：</p>
+<blockquote class="cal cal-plain">
+<p>「嘿，開機請用 <strong>factory</strong> 裡的檔案，不要用 boot 裡的。」</p>
+</blockquote>
+<p>命令列帶的是 <code>initramfs_factory</code>。</p>
+<h3>init 這邊：10 步</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>做什麼</th>
+<th>為什麼</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>讀三個 kernel 參數，<code>sgdisk -e</code> 把 GPT 資料搬到碟尾</td>
+<td>主機上做的映像檔<strong>沒有正確的分割表</strong>（§13 的「壓扁」），要先補上</td>
+</tr>
+<tr>
+<td>2</td>
+<td>唯讀掛載 <code>/factory</code></td>
+<td>要讀 <code>storage.info</code> 等基本資訊</td>
+</tr>
+<tr>
+<td>3</td>
+<td>檢查檔案齊不齊，<strong>驗 rootfs 簽章</strong></td>
+<td><code>fitimage</code>、<code>rootfs</code>、<code>rootfs.signature</code> 缺一不可</td>
+</tr>
+<tr>
+<td>4</td>
+<td>重建 boot 分割區，把 fitimage 複製進去</td>
+<td><code>mkfs</code> 之後從 factory 拷過來</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>產生新的 rootfs 加密鑰匙</strong>，存成 <code>/boot/rootfs.key.bb</code></td>
+<td><code>caam-keygen create rootfs.key ecb -s 16</code></td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>重建分割表</strong></td>
+<td>把 §13 壓成 1MB 的 root 和 data 撐開到正確大小</td>
+</tr>
+<tr>
+<td>7</td>
+<td>建立加密 rootfs，解密解壓填入</td>
+<td>這一步是核心</td>
+</tr>
+<tr>
+<td>8</td>
+<td>清掉其他分割區</td>
+<td><strong>不碰 factory、boot、root</strong></td>
+</tr>
+<tr>
+<td>9</td>
+<td>修 <code>/etc/fstab</code>，卸載清理</td>
+<td>label 換成 UUID</td>
+</tr>
+<tr>
+<td>10</td>
+<td>通知 bootloader「下次正常開機」</td>
+<td><code>bundle-set-bootmode.sh normal</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3 class="h3-key">🎯 步驟 3 有一個刻意的破洞</h3>
+<p>檢查清單裡，<code>fitimage</code>、<code>rootfs</code>、<code>rootfs.signature</code> <strong>缺了就 fatal</strong>，
+但 <code>/factory/dek</code> 缺了只是 <strong>warn</strong>。</p>
+<p>書上解釋為什麼：</p>
+<blockquote class="cal cal-plain">
+<p>這樣一來，<strong>沒有 dek 的系統（也就是非安全系統）也能跑完 factory-reset</strong>。
+開發時很好用——可以在還沒上安全機制的板子上跑同一套程式碼。
+<strong>但另一方面，這降低了系統安全性。</strong></p>
+</blockquote>
+<p>這是書上少數自己標出「我知道這樣不夠好」的地方。</p>
+<h3>步驟 7：核心</h3>
+<pre><code class="language-bash">sh -c &quot;keyctl new_session ; keyctl padd logon logkey: @s &lt; /etc/caam/rootfs.key ; \
+       dmsetup create root --table \&quot;... crypt capi:tk(cbc(aes))-plain ...\&quot;&quot;
+dmsetup mknodes root
+rootdev=&quot;/dev/mapper/root&quot;
+mkfs.${rootfstype} -q -F -L root -I 256 $rootdev
+mount -t ${rootfstype} $rootdev /mnt
+openssl enc -d -in $factpath/rootfs -aes-256-cbc ...   # 解密 → 解壓 → 填入
+</code></pre>
+<p>注意 <code>rootdev</code> 這個變數<strong>中途換了身分</strong>：一開始指真正的分割區，
+<code>dmsetup</code> 之後指 <code>/dev/mapper/root</code>。</p>
+<blockquote class="cal cal-note">
+<p>ℹ️ 書上點出一個細節：<code>openssl</code> 這裡是<strong>直接給鑰匙和 IV</strong>，
+不是用 passphrase。理由是 <strong>A/B 方案需要這個形式</strong>才能安全地保存鑰匙——
+這個伏筆在 §29 收。</p>
+</blockquote>
+<h3>步驟 9：為什麼要把 label 換成 UUID</h3>
+<p>rootfs 建好時，<code>/etc/fstab</code> 長這樣：</p>
+<pre><code>/dev/disk/by-label/boot      /boot     ...
+/dev/disk/by-label/factory   /factory  ...
+/dev/disk/by-label/data      /data     ...
+</code></pre>
+<p>書上說<strong>用 label 指分割區容易出錯</strong>，所以換成唯一的 UUID：</p>
+<pre><code>UUID=&quot;423db953-4c4d-43e4-894d-038330336763&quot; /boot     ...
+UUID=&quot;3d3575ac-378e-420a-bb21-10043a692501&quot; /factory  ...
+</code></pre>
+<blockquote class="cal cal-gap">
+<p>📌 <strong>這一節的程式碼有幾段抽不出來。</strong> 步驟 3 的
+<code>openssl dgst -verify</code> 後面接的參數、步驟 4 附加 <code>dek</code> 的那行，
+PDF 抽出的文字裡整段消失。依規則不補字重建 ——
+要看完整程式碼請翻書頁 128–143（PDF 146–161）。</p>
+</blockquote>
+<!-- -->
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.132 ｜ PDF p.150</p>
+<p>Smart readers should have noticed that while the files fitimage, rootfs, and
+rootfs.signature are required to go further with the factory-reset procedure, the
+file dek is optional. This is an important note because, by doing so, we allow a
+successful factory-reset execution even on those systems that don't have this file,
+that is, on nonsecured systems! [...] it can be a decrease in system security…</p>
+</blockquote>
+<p class="pageref"><span>📖</span><strong>書頁 128–143</strong> ｜ PDF 頁 146–161 ｜ <a href="./linux-secure-boot.pdf#page=146">開啟 PDF</a></p>
+<hr />
+<h2 id="s36"><span class="sec-mark">§28</span><span class="sec-label">Rescue — system-update（13 步）</span></h2>
+<h3>U-Boot 這邊</h3>
+<pre><code>bootname 指向 data，image 指向 update/fitimage
+</code></pre>
+<p>也就是 U-Boot 會去 <code>/data/update/</code> 找 fitimage。
+命令列帶 <code>initramfs_update</code>。</p>
+<blockquote class="cal cal-note">
+<p>ℹ️ 書上強調這只是<strong>約定</strong>，你要換目錄也行——
+但 <strong>bootloader 和使用者空間必須講好同一個位置</strong>。</p>
+</blockquote>
+<h3>流程跟 factory-reset 幾乎一樣</h3>
+<p>差別只有<strong>來源</strong>：factory-reset 從 <code>/factory</code> 拿，system-update 從 <code>/data/update</code> 拿。</p>
+<p>所以 13 步裡多數是重複的：掛載 → 檢查 → 驗簽 → 重建 boot →
+產新鑰匙 → 重建加密 rootfs → 修 fstab → 通知 bootloader。</p>
+<h3 class="h3-key">🎯 但第 7 步不一樣：臨界區</h3>
+<p>書上原話最有畫面：</p>
+<blockquote class="cal cal-plain">
+<p><strong>過了這一點，就不能靠單純重開機把系統救回來了。</strong>
+更新程序必須跑完，否則系統會壞掉。
+這就是消費性裝置上那句經典訊息背後的東西：
+<strong>「System is updating. Please do not power off.」</strong></p>
+</blockquote>
+<p>那書上怎麼處理？<strong>進臨界區之前，先把下次開機模式設成 factory：</strong></p>
+<pre><code class="language-bash">bundle-set-bootmode.sh factory
+</code></pre>
+<blockquote class="cal cal-plain">
+<p>意思是：<strong>萬一更新到一半斷電，下次開機會自動做 factory-reset</strong>，
+系統回到出廠狀態——不會好，但至少是活的。</p>
+<p>這是整個 rescue 方案存在的理由，在這一步變得非常具體：
+<strong>留一份完整的出廠系統，就是為了這種時候。</strong></p>
+</blockquote>
+<p>更新順利跑完後，最後一步才把開機模式改回 <code>normal</code>。</p>
+<h3>這也解釋了 §13 說的「停機好幾分鐘」</h3>
+<p>看步驟就懂了：重建 boot 分割區、產新鑰匙、格式化整個 root、
+解密解壓整包 rootfs 填進去——<strong>這些全部在同一次開機序列裡完成</strong>，
+而且系統在這段時間什麼事都做不了。</p>
+<p>rootfs 越大、CPU 越慢，停越久。</p>
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.151 ｜ PDF p.169</p>
+<p>Now we enter into a critical zone. In fact, after this point we cannot do a simple
+reset to recover the system! The update procedure must go on, or the system will
+break (this is the classical situation when we do an update on a consumer device
+and we get the message: System is updating. Please do not power off).</p>
+</blockquote>
+<p class="pageref"><span>📖</span><strong>書頁 143–161</strong> ｜ PDF 頁 161–179 ｜ <a href="./linux-secure-boot.pdf#page=161">開啟 PDF</a></p>
+<hr />
+<h1 id="s37" class="part">第八部分：A/B 差在哪（第 3 章 3.2）</h1>
+<p>A/B 方案的三個流程，跟 Rescue 用的是<strong>同一份程式碼</strong>。
+所以這一部分不重走一遍，只列差異。</p>
+<blockquote class="cal cal-plain">
+<p>對照組是 §26、§27、§28。</p>
+</blockquote>
+<hr />
+<h2 id="s38"><span class="sec-mark">§29</span><span class="sec-label">三個流程的 delta</span></h2>
+<h3>總表</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th><strong>normal boot</strong></th>
+<th><strong>factory-reset</strong></th>
+<th><strong>system-update</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>U-Boot</strong></td>
+<td><code>rootname</code> / <code>image</code> 加上 selector 字尾</td>
+<td><code>bootname</code>→<code>root_a</code>、<code>rootname</code>→<code>root_b</code></td>
+<td><strong>panic，直接不准</strong></td>
+</tr>
+<tr>
+<td><strong>init</strong></td>
+<td><code>/dev/mapper/root</code> 接到 <code>root_b</code>；<strong>多存一份 logon key</strong></td>
+<td>出廠檔在 <code>root_a</code>，系統裝進 <code>root_b</code></td>
+<td>不參與</td>
+</tr>
+<tr>
+<td><strong>誰在做</strong></td>
+<td>init</td>
+<td>init</td>
+<td><strong>完全在使用者空間</strong></td>
+</tr>
+</tbody>
+</table></div>
+<h3>normal boot：加一個字尾</h3>
+<p>初始變數多了 <code>ab_selector=b</code>，然後：</p>
+<pre><code>rootname=root      →  rootname=root_b
+image=fitimage     →  image=fitimage_b
+</code></pre>
+<p>於是 <code>rootpart</code> 從 3 變成 4，載入的 kernel 從 <code>fitimage</code> 變成 <code>fitimage_b</code>。
+<strong>§13 講的「全部魔法就是這個字尾」，在這裡看到程式碼版本。</strong></p>
+<p>init 那四步裡，第 1、3 步<strong>完全一樣</strong>，第 2 步只差 <code>rootdev</code> 指向 <code>root_b</code>
+（<code>dmsetup create root</code> 這行本身一個字都沒改）。</p>
+<blockquote class="cal cal-note">
+<p>ℹ️ 書上說 <code>root_a</code> 和 <code>root_b</code> 在這個例子裡<strong>用同一把鑰匙</strong>，
+但「也可以想像用不同的鑰匙」。</p>
+</blockquote>
+<h3>factory-reset：出廠檔案住在 root_a</h3>
+<p>Rescue 是把出廠系統放在<strong>大的 factory 分割區</strong>。
+A/B 的 factory 分割區只有 8MB，放不下——所以出廠壓縮檔放在 <strong><code>root_a</code></strong>。</p>
+<p>U-Boot 的手法很直接：</p>
+<pre><code>bootname → root_a    （出廠檔案在這）
+rootname → root_b    （系統裝到這）
+</code></pre>
+<p>書上說：<strong>這樣一設，剩下的就跟 rescue 一模一樣了。</strong></p>
+<blockquote class="cal cal-plain">
+<p>這也解釋了 §13 那句「預設的 active 分割區是 b」——
+因為 a 那邊裝的是出廠映像檔，不是可以開機的系統。</p>
+</blockquote>
+<h3 class="h3-key">🎯 system-update：bootloader 直接拒絕</h3>
+<pre><code>elif test ${bootmode} = update; then
+        ...
+        panic &quot;### PANIC ### Cannot update (A/B schema)!&quot;
+</code></pre>
+<p><strong>A/B 方案下，<code>bootmode=update</code> 會讓系統 panic 然後掛住。</strong></p>
+<p>書上說這很合理：</p>
+<blockquote class="cal cal-plain">
+<p>A/B 方案的存在理由就是<strong>系統不能停，連更新時都不能停</strong>。
+所以更新<strong>完全在使用者空間執行，bootloader 一點事都不用做。</strong></p>
+</blockquote>
+<p>流程改由 <code>bundle-update.sh</code> 負責：</p>
+<pre><code>1. 偵測現在跑的是 root_a 還是 root_b → 推出「另一邊」
+2. 驗更新檔簽章
+3. 把 fitimage 裝進 /boot，命名成 fitimage_a 或 fitimage_b
+4. 格式化另一邊的 root 分割區，解密更新檔填進去
+5. 修 fstab、清理
+6. 改 bootloader 環境裡的 ab_selector
+7. 「重開機就跑新版了」
+</code></pre>
+<p><strong>整段期間，目前這一邊還在正常跑。</strong></p>
+<h3 class="h3-key">🎯 兩節之隔的伏筆與回收</h3>
+<p>還記得 §26 步驟 4 那個「A/B 才有的額外動作」嗎——把鑰匙也存成一份 logon key？</p>
+<p><strong>那個動作存在的唯一理由，就是為了這一步。</strong></p>
+<p>書上把因果講得很清楚：</p>
+<blockquote class="cal cal-plain">
+<p>解開更新檔 TAR 的鑰匙，在 rescue 方案裡<strong>只活在 initramfs 裡</strong>（<code>/etc/rootfs.key</code>），
+完全沒問題——因為 rescue 的更新就是在 initramfs 裡跑的。</p>
+<p><strong>但 A/B 的更新跑在 root filesystem 裡</strong>，那裡讀不到 initramfs 的檔案。
+所以 normal boot 時就得先把這把鑰匙<strong>用 logon key 的形式安全地存起來</strong>，
+之後用 <code>crypto-afalg</code> 拿它來解密更新檔。</p>
+</blockquote>
+<p>這也回頭解釋了 §27 步驟 7 那個細節：
+<strong>為什麼 <code>openssl</code> 要直接給鑰匙和 IV，而不是用 passphrase</strong>——
+因為 A/B 需要鑰匙是這個形式才存得進 logon key。</p>
+<blockquote class="cal cal-gap">
+<p>📌 <strong>這一節的程式碼抽得比前面更糟。</strong> <code>bundle-update.sh</code> 的片段裡
+大量條件式與參數消失。上面的流程是照書上的<strong>文字說明</strong>整理的，
+程式碼請直接翻書頁 181–189（PDF 199–207）。</p>
+</blockquote>
+<!-- -->
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.181 ｜ PDF p.199</p>
+<p>Compared to the rescue schema, this time, the update procedure starts and executes
+entirely in user space; the bootloader has no duties to do. [...] This is logical
+since the A/B schema is adopted when our system must be always running and
+functional, even during a system-update!</p>
+</blockquote>
+<!-- -->
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.184 ｜ PDF p.202</p>
+<p>[...] we must use the encryption key for the root filesystem TAR archive [...] which
+for the rescue schema lives only within the initramfs (file /etc/rootfs.key)
+generating no problems at all; but now we need this key in the root filesystem! To
+solve the issue, we should recall what we did in step 4 of the section "Doing a
+Normal Boot" [...] where we used a logon key to securely save this important key.</p>
+</blockquote>
+<p class="pageref"><span>📖</span><strong>書頁 165–189</strong> ｜ PDF 頁 183–207 ｜ <a href="./linux-secure-boot.pdf#page=183">開啟 PDF</a></p>
+<hr />
+<h2 id="s39"><span class="sec-mark">§30</span><span class="sec-label">名詞小抄</span></h2>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -2949,10 +3392,45 @@ BusyBox 那道防線      → 一個包裝腳本就繞過
 <td>—</td>
 <td>安全區裡的警報旗標。斷電也記得；值不對就代表被動過或電池被拔（§19）</td>
 </tr>
+<tr>
+<td><strong>U-Boot metacode</strong></td>
+<td>—</td>
+<td>書上自造的詞：<strong>簡化過、為了好讀而寫的 U-Boot 腳本</strong>，不是真的 U-Boot 語法（§25）</td>
+</tr>
+<tr>
+<td><strong><code>part number</code></strong></td>
+<td>—</td>
+<td>U-Boot 指令，把分割區的<strong>標籤</strong>換成<strong>編號</strong>（<code>root</code> → 3），因為 kernel 的 <code>root=</code> 要的是 <code>/dev/mmcblk2p3</code>（§25）</td>
+</tr>
+<tr>
+<td><strong><code>sgdisk -e</code></strong></td>
+<td>—</td>
+<td>把 GPT 備份表搬到磁碟結尾。factory-reset 第一步要做，因為主機端做的映像檔沒有正確分割表（§27）</td>
+</tr>
+<tr>
+<td><strong>critical zone（臨界區）</strong></td>
+<td>—</td>
+<td>system-update 第 7 步之後就不能靠重開機救回來。進去前先把下次開機設成 factory 當保險（§28）</td>
+</tr>
+<tr>
+<td><strong><code>bundle-set-bootmode.sh</code></strong></td>
+<td>—</td>
+<td>書上的工具，寫入 bootloader 環境變數決定下次開機模式（normal / factory / update）（§27、§28）</td>
+</tr>
+<tr>
+<td><strong><code>bundle-update.sh</code></strong></td>
+<td>—</td>
+<td>書上的更新工具。A/B 方案的 system-update <strong>完全靠它在使用者空間跑完</strong>（§29）</td>
+</tr>
+<tr>
+<td><strong><code>ab_selector</code></strong></td>
+<td>—</td>
+<td>bootloader 環境變數，決定這次跑 a 邊還是 b 邊。A/B 更新的最後一步就是改它（§29）</td>
+</tr>
 </tbody>
 </table></div>
 <hr />
-<h2 id="s33"><span class="sec-mark">§26</span><span class="sec-label">書上沒講的（缺口清單）</span></h2>
+<h2 id="s40"><span class="sec-mark">§31</span><span class="sec-label">書上沒講的（缺口清單）</span></h2>
 <p>書本自己明說「不在範圍」的東西，之後想深入就從這裡找：</p>
 <div class="table-wrap"><table>
 <thead>
@@ -3019,6 +3497,16 @@ BusyBox 那道防線      → 一個包裝腳本就繞過
 <td>附錄 B 只示範洞在哪，沒補洞</td>
 </tr>
 <tr>
+<td><strong>可執行的完整腳本</strong></td>
+<td>書上用 <code>...</code> 省略程式碼，明講那是「a possible implementation」（書頁 122｜PDF 140）</td>
+<td>第 3 章給的是參考實作的說明，不是可照抄的 SOP</td>
+</tr>
+<tr>
+<td><strong>非 CAAM 平台怎麼做</strong></td>
+<td>反覆說「這步是廠商專屬的，你可以改用 trusted key」，但<strong>沒有示範</strong>（書頁 122、135｜PDF 140、153）</td>
+<td>手上不是 i.MX 就要自己換掉這幾步</td>
+</tr>
+<tr>
 <td><strong>防拆解除的身分驗證</strong></td>
 <td>「高度依賴系統，不在本書涵蓋範圍」（書頁 213｜PDF 230）</td>
 <td>沒有它，解除程序就是「誰按到開關誰就能解除」</td>
@@ -3052,19 +3540,21 @@ BusyBox 那道防線      → 一個包裝腳本就繞過
 </tr>
 </tbody>
 </table></div>
-<h3>這輪筆記自己跳過的（不是書上沒有，是我們決定不做）</h3>
+<h3>這份筆記自己跳過的（不是書上沒有，是我們決定不做）</h3>
+<p><strong>全書已無未涵蓋的章節。</strong> 只剩兩處刻意不做逐字呈現：</p>
 <ul>
-<li>第 3 章的<strong>逐步操作</strong>：Rescue 和 A/B 各自怎麼做 normal boot /
-  factory-reset / system-update（書頁 118–189｜PDF 136–207）</li>
 <li>第 4 章 4.1 的<strong>逐步指令</strong>：STM32 與 i.MX 的產鑰匙、燒 fuse 完整流程
-  （書頁 193–200｜PDF 210–217）。這是刻意的取捨，理由見 brief 第 4 節</li>
+  （書頁 193–200｜PDF 210–217）。理由見 brief 第 4 節 ——
+  指令綁死廠商，換晶片就用不上。</li>
+<li>第 3 章 A/B 三個流程<strong>沒有各自從頭寫完整</strong>，只寫了跟 Rescue 的差異（§29）。
+  理由：大部分內容會是在重述 §26–§28。</li>
 </ul>
 <blockquote class="cal cal-plain">
 <p>~~附錄 B 特別值得補——它處理的是 §9 提到的 kernel command line 明文問題。~~
 → <strong>已補，見 §21–§24。</strong></p>
 </blockquote>
 <hr />
-<h2 id="s34">一句話總結</h2>
+<h2 id="s41">一句話總結</h2>
 <blockquote class="cal cal-plain">
 <p><strong>Secure Boot = 一棒接一棒的驗簽 + 解密，
 從燒死在晶片裡的 ROM code 開始，到掛載加密的 rootfs 為止。
@@ -3090,6 +3580,12 @@ BusyBox 那道防線      → 一個包裝腳本就繞過
 <p><strong>而這一切的前提是沒有人把機殼打開。
 真被打開了，最後一道防線不是再驗一次簽章——
 是把鑰匙抹掉，讓那顆硬碟對誰都打不開。</strong></p>
+</blockquote>
+<!-- -->
+
+<blockquote class="cal cal-plain">
+<p><strong>至於實作：三個流程用的是同一份 U-Boot 程式碼、同一支 init。
+換的不是程式，是變數。</strong></p>
 </blockquote>
     </article>
   </div>

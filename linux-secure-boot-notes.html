@@ -77,6 +77,22 @@ body{
   padding:4px 10px; border:1px solid var(--rule); border-radius:2px;
   color:var(--ink-soft); background:var(--surface);
 }
+.source{
+  margin:18px 0 0; max-width:72ch; font-size:13px; line-height:1.7;
+  color:var(--ink-soft); padding:12px 14px; border-radius:3px;
+  background:var(--surface); border:1px solid var(--rule-soft);
+  border-left:3px solid var(--accent);
+}
+.source strong{
+  font-family:var(--f-mono); font-size:11px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--accent); font-weight:600;
+}
+.source em{font-style:normal; color:var(--ink); font-weight:600;}
+.source code{
+  font-family:var(--f-mono); font-size:12px; background:var(--code-bg);
+  color:var(--code-ink); padding:1px 5px; border-radius:2px;
+}
+.source a{color:var(--accent-ink); text-underline-offset:2px;}
 
 /* ── the chain strip: the page's one flourish ───────────────────────── */
 .chain{
@@ -223,6 +239,20 @@ blockquote.cal p{margin:0;}
 .cal-tip,.cal-note{border-left-color:var(--accent); background:var(--surface-2);}
 .cal-plain{border-left-color:var(--rule); background:var(--surface-2);}
 
+/* ── 📄 verbatim excerpts from the book ─────────────────────────────── */
+.cal-src{
+  border-left-color:var(--ink-faint); background:var(--surface-2);
+  font-family:var(--f-body); font-size:14.5px; line-height:1.72;
+  color:var(--ink-soft); font-style:italic;
+}
+.cal-src p:first-child{
+  font-family:var(--f-mono); font-style:normal; font-size:11px;
+  letter-spacing:.14em; text-transform:uppercase; color:var(--ink-faint);
+  margin-bottom:8px;
+}
+.cal-src p:first-child strong{color:var(--ink-faint); font-weight:600;}
+.cal-src p + p{margin-top:0;}
+
 /* ── page reference chips ───────────────────────────────────────────── */
 p.pageref{
   font-family:var(--f-mono); font-size:11.5px; letter-spacing:.04em;
@@ -230,6 +260,12 @@ p.pageref{
   border-top:1px dashed var(--rule);
 }
 p.pageref span{margin-right:6px;}
+p.pageref strong{color:var(--ink-soft); font-weight:600;}
+p.pageref a{
+  color:var(--accent); text-decoration:none;
+  border-bottom:1px dotted var(--accent);
+}
+p.pageref a:hover{border-bottom-style:solid;}
 
 /* ── closing line gets weight ───────────────────────────────────────── */
 .doc h2:last-of-type ~ blockquote.cal-plain{
@@ -265,8 +301,19 @@ html{scroll-behavior:smooth;}
     <div class="meta">
       <span>i.MX8 / i.MX9 / STM32MP1</span>
       <span>U-Boot · Yocto</span>
-      <span>頁碼 = 書頁（PDF = 書頁 + 20）</span>
+      <span>書頁 ↔ PDF 頁</span>
     </div>
+
+    <p class="source">
+      <strong>出處</strong>　每節結尾先附一段 <em>📄 原文</em>（引自原書，未翻譯），
+      再標 <em>書頁</em>（印在紙本上的頁碼）與 <em>PDF 頁</em>（PDF 檔的第幾頁）。
+      兩者差值<em>不固定</em>——逐頁核對印出的頁碼後為
+      <code>1–75 → +20</code>、<code>77–107 → +19</code>、<code>109–189 → +18</code>、
+      <code>191–215 → +17</code>、<code>217– → +16</code>
+      （書頁 76、108、190、216 在這個 PDF 裡不存在）。
+      原始檔 <a href="./linux-secure-boot.pdf">linux-secure-boot.pdf</a>（252 頁），
+      每個 📖 都可直接點開到該頁。
+    </p>
 
     <section class="chain" aria-label="信任鏈概觀">
       <p class="chain-cap">The Chain-of-Trust ／ 一棒接一棒：驗簽 → 解密 → 執行</p>
@@ -411,7 +458,20 @@ openssl rand 32 | od -tx1
 <li><strong>非對稱 / 對稱</strong>：非對稱有兩把（公鑰、私鑰）；對稱只有一把，加解密同一把</li>
 <li><strong>IV（initial vector）</strong>：CBC 的起始亂數，讓同樣的明文每次產出不同密文</li>
 </ul>
-<p class="pageref"><span>📖</span>書頁 1–5</p>
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.1 ｜ PDF p.21</p>
+<p>In cryptography, the use of signature keys or encryption keys is intended
+for two different purposes. The former are used to ensure authenticity and
+integrity; that is, the goal is to verify who sent the data and that the data has
+not been altered since it was signed. While the latter are used to ensure
+confidentiality, so the goal is to make data unreadable to anyone except the
+intended recipient. To do a digital signature, we must use an asymmetric key
+pair, while for encryption, we can use asymmetric or symmetric encryption.
+[...] However, due to speed issues, all CPUs use symmetric encryption for
+securing their code, so from now until the end of this book, we are going to use
+symmetric encryption only.</p>
+</blockquote>
+<p class="pageref"><span>📖</span><strong>書頁 1–5</strong> ｜ PDF 頁 21–25 ｜ <a href="./linux-secure-boot.pdf#page=21">開啟 PDF</a></p>
 <hr />
 <h2 id="s4"><span class="sec-mark">§2</span><span class="sec-label">為什麼不能把鑰匙寫在指令裡</span></h2>
 <h3>這在解決什麼問題</h3>
@@ -441,7 +501,7 @@ openssl rand 32 | od -tx1
 書上有做 1GB 檔案的計時比較（<code>openssl enc</code> vs <code>openssl enc -engine afalg</code>）。</p>
 <blockquote class="cal cal-gap">
 <p>📌 書上列出了測量指令，但 PDF 抽出的文字裡實際秒數被切掉了，
-所以<strong>我沒辦法引用具體數字</strong>。要看的話翻書頁 13–14。</p>
+所以<strong>我沒辦法引用具體數字</strong>。要看的話翻書頁 13–14（PDF 33–34）。</p>
 </blockquote>
 <h3>工具：crypto-afalg</h3>
 <p>書作者用的工具，指令跟 openssl 幾乎一樣，但<strong>走 kernel crypto API + keyring</strong>。
@@ -456,7 +516,23 @@ CONFIG_CRYPTO_USER_API_SKCIPHER=y
 <p>在 i.MX 的 <code>/proc/crypto</code> 裡，CAAM 會提供<strong>兩個</strong> AES-ECB 實作：
 <code>ecb(aes)</code> 和 <code>tk(ecb(aes))</code>。同一個演算法，但<strong>吃不同種類的鑰匙</strong>。
 <code>tk</code> = trusted key。這個差別到 §4、§5 才會完全講清楚。</p>
-<p class="pageref"><span>📖</span>書頁 5–18</p>
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.5 ｜ PDF p.25</p>
+<p>[...] regarding the above encryption/decryption commands, we have to specify
+the key in the command line (or from a file), which exposes the key to everyone
+who has access to the root filesystem (with the right privileges, of course).
+In this book, we are going to see several ways to prevent the key from being read
+even if a process has the root privileges!</p>
+</blockquote>
+<!-- -->
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.18 ｜ PDF p.38</p>
+<p>The reader should notice in the above output that we have two different
+AES-ECB implementations supported by the CAAM [...]: one named ecb(aes) and the
+other named tk(ecb(aes)). What is crucial here is that we have the same AES-CBC
+algorithm, but it works on different keys!</p>
+</blockquote>
+<p class="pageref"><span>📖</span><strong>書頁 5–18</strong> ｜ PDF 頁 25–38 ｜ <a href="./linux-secure-boot.pdf#page=25">開啟 PDF</a></p>
 <hr />
 <h2 id="s5"><span class="sec-mark">§3</span><span class="sec-label">鑰匙放哪裡：kernel keyring</span></h2>
 <h3>這在解決什麼問題</h3>
@@ -515,7 +591,22 @@ CONFIG_CRYPTO_USER_API_SKCIPHER=y
 <p>📌 書上明說 keyring 本身「不在本書詳細講解範圍」。想深入看
 kernel 原始碼的 <code>Documentation/security/keys/</code>。</p>
 </blockquote>
-<p class="pageref"><span>📖</span>書頁 18–21</p>
+<!-- -->
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.18 ｜ PDF p.38</p>
+<p>The Linux Key-Management Facility, also known as the Linux Kernel Key
+Retention Service or Linux Keyring, is a core component of Linux that is
+primarily a way for various kernel components to retain or cache security data,
+authentication keys, encryption keys, and other data in the kernel.</p>
+</blockquote>
+<!-- -->
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.20 ｜ PDF p.40</p>
+<p>Readers can think of the session keyring (@s) as their wallet for a single
+day, while the user keyring (@u) is more like a permanent safety deposit box for
+a specific [user].</p>
+</blockquote>
+<p class="pageref"><span>📖</span><strong>書頁 18–21</strong> ｜ PDF 頁 38–41 ｜ <a href="./linux-secure-boot.pdf#page=38">開啟 PDF</a></p>
 <hr />
 <h2 id="s6"><span class="sec-mark">§4</span><span class="sec-label">四種 key，安全性由低到高</span></h2>
 <h3>這在解決什麼問題</h3>
@@ -673,7 +764,7 @@ NXP 很多 i.MX CPU 上的加密硬體。工具是 NXP 的 <code>caam-keygen</co
 <pre><code class="language-bash">caam-keygen create caamkey ecb -s 32   # 產一把 256-bit 的鑰匙
 </code></pre>
 <h3 class="h3-key">🎯 CAAM key 和 trusted key 的關鍵差別</h3>
-<p>這是第 1 章最重要的一句話，<strong>書上書頁 46 用驚嘆號強調</strong>：</p>
+<p>這是第 1 章最重要的一句話，<strong>書上書頁 46（PDF 66）用驚嘆號強調</strong>：</p>
 <blockquote class="cal cal-plain">
 <p><strong>trusted key</strong>：明文的鑰匙<strong>在 kernel 裡</strong>，封起來的版本在磁碟上。
 <strong>CAAM key</strong>：明文的鑰匙<strong>在 CAAM 硬體裡</strong>，
@@ -683,7 +774,23 @@ NXP 很多 i.MX CPU 上的加密硬體。工具是 NXP 的 <code>caam-keygen</co
 用 CAAM key，攻破 kernel 也只拿得到封好的 blob。<strong>多擋一層</strong>。</p>
 <p>（書上 Figure 1-1 vs Figure 1-2，兩張圖裡都有個叫 <code>key</code> 的變數，
 但裝的東西不一樣——這是作者特別提醒的點。）</p>
-<p class="pageref"><span>📖</span>書頁 21–47</p>
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.31 ｜ PDF p.51</p>
+<p>By using the term sealed, we mean such keys that are created in the kernel,
+and user space sees, stores, and loads only encrypted blobs. [...] Furthermore,
+these keys are persistent across reboots, unlike the logon keys, which vanish on
+a reboot.</p>
+</blockquote>
+<!-- -->
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.46 ｜ PDF p.66</p>
+<p>Now, within the caamkey file, a new 256-bit key is stored, and it is known by
+the CAAM only! This is a similar situation as per trusted keys; however, there is
+a crucial difference! While a trusted key is stored in its unsealed form in the
+kernel, a CAAM key is stored in its unsealed form in the CAAM. When it is moved
+to the kernel, it is sealed (see Figure 1-2).</p>
+</blockquote>
+<p class="pageref"><span>📖</span><strong>書頁 21–47</strong> ｜ PDF 頁 41–67 ｜ <a href="./linux-secure-boot.pdf#page=41">開啟 PDF</a></p>
 <hr />
 <h2 id="s7"><span class="sec-mark">§5</span><span class="sec-label">磁碟加密兩條路</span></h2>
 <h3>這在解決什麼問題</h3>
@@ -706,7 +813,7 @@ NXP 很多 i.MX CPU 上的加密硬體。工具是 NXP 的 <code>caam-keygen</co
                                    整顆一起加密
 </code></pre>
 <p>（書上 Figure 1-3）</p>
-<h3>檔案系統層（書頁 48–63）</h3>
+<h3>檔案系統層（書頁 48–63｜PDF 68–83）</h3>
 <p>好處是<strong>粒度細</strong>——可以只加密某幾個檔案或目錄。兩種實作方式：</p>
 <ul>
 <li><strong>stacked（疊在上面）</strong>：例如 <strong>eCryptfs</strong>（kernel module）、
@@ -723,7 +830,7 @@ NXP 很多 i.MX CPU 上的加密硬體。工具是 NXP 的 <code>caam-keygen</co
 <pre><code class="language-bash">keyctl unlink &lt;serial&gt; @s
 sync &amp;&amp; echo 3 &gt; /proc/sys/vm/drop_caches
 </code></pre>
-<h3>區塊層：dm-crypt（書頁 63–75）← 這本書用的</h3>
+<h3>區塊層：dm-crypt（書頁 63–75｜PDF 83–95）← 這本書用的</h3>
 <p>在<strong>區塊裝置</strong>這層做。做出一個虛擬的加密區塊裝置，然後在上面
 格式化一般的檔案系統。</p>
 <pre><code class="language-bash">dmsetup create root --table \
@@ -807,7 +914,17 @@ dmsetup create root --table \
 <p>📌 如果需要做<strong>預先建好的 rootfs 映像檔</strong>（產線用），可以用 <code>-t</code>
 指定一把已知的 CAAM key：<code>caam-keygen create caamkey ecb -t 0123...cdef -h</code></p>
 </blockquote>
-<p class="pageref"><span>📖</span>書頁 47–75</p>
+<!-- -->
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.47 ｜ PDF p.67</p>
+<p>Transparent encryption in Linux refers to a method of protecting data on a
+storage device with the help of the kernel. In fact, the encryption and
+decryption happen automatically and on-the-fly. So the data is always encrypted
+when at rest (on the disk) but appears as plain text to the running operating
+system and its users when accessed. This approach allows user-space applications
+to work as if everything were in plain text.</p>
+</blockquote>
+<p class="pageref"><span>📖</span><strong>書頁 47–75</strong> ｜ PDF 頁 67–95 ｜ <a href="./linux-secure-boot.pdf#page=67">開啟 PDF</a></p>
 <hr />
 <h1 id="s8" class="part">第二部分：Secure Boot 是什麼（第 2 章）</h1>
 <hr />
@@ -841,7 +958,25 @@ Secure Boot 會擋下開機並通常會告警。</p>
 <blockquote class="cal cal-gap">
 <p>📌 細節在附錄 A，<strong>不在這輪筆記範圍</strong>。</p>
 </blockquote>
-<p class="pageref"><span>📖</span>書頁 79–82</p>
+<!-- -->
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.79 ｜ PDF p.98</p>
+<p>Each piece of boot software from the bootloaders (and their companion
+software), the kernel, and the rootfs must be digitally signed and encrypted with
+several private keys. The first component, the fundamental one, is the one that
+is trusted by default, and it is called Root-of-Trust. The Root of Trust cannot be
+verified by anything else in the system; its security is assumed because it is
+physically or logically protected. Usually, this is the ROM code fused into the
+chip.</p>
+</blockquote>
+<!-- -->
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.81 ｜ PDF p.100</p>
+<p>For each stage, keys may change, and, in this case, the Chain-of-Trust is
+more robust; however, this mechanism is considered robust even in the case where
+we decide to use the same keys in each stage.</p>
+</blockquote>
+<p class="pageref"><span>📖</span><strong>書頁 79–82</strong> ｜ PDF 頁 98–101 ｜ <a href="./linux-secure-boot.pdf#page=98">開啟 PDF</a></p>
 <hr />
 <h2 id="s10"><span class="sec-mark">§7</span><span class="sec-label">信任鏈的破口：rootfs</span></h2>
 <h3 class="h3-key">🎯 這是全書最重要的一個「不保護」</h3>
@@ -867,7 +1002,25 @@ Secure Boot 會擋下開機並通常會告警。</p>
 <blockquote class="cal cal-gap">
 <p>📌 書上明說 <strong>IMA 不在本書涵蓋範圍</strong>。這是你之後想補強時的第一個方向。</p>
 </blockquote>
-<p class="pageref"><span>📖</span>書頁 81、96</p>
+<!-- -->
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.81 ｜ PDF p.100</p>
+<p>As the last step, the kernel, by using an encryption key, mounts the real
+rootfs. Readers should notice that in this last step the security is given by the
+encryption key only, since it's not possible to have a signed rootfs!
+[...] the signature procedure is not as efficient as the encryption one. [...] an
+encrypted disk is implemented by doing a single block encryption, and this
+operation cannot be done for signing.</p>
+</blockquote>
+<!-- -->
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.78 ｜ PDF p.97</p>
+<p>Moreover, we should consider that once the encrypted rootfs is mounted, from
+the process perspective it is a normal rootfs (with no encryption), so the rootfs
+encryption is an effective protection when the system is in the powered-off
+state!</p>
+</blockquote>
+<p class="pageref"><span>📖</span><strong>書頁 81、96</strong> ｜ PDF 頁 100、115 ｜ <a href="./linux-secure-boot.pdf#page=100">開啟 PDF</a></p>
 <hr />
 <h2 id="s11"><span class="sec-mark">§8</span><span class="sec-label">Secure Boot 不做的事</span></h2>
 <h3>這在解決什麼問題</h3>
@@ -890,7 +1043,25 @@ Secure Boot 會擋下開機並通常會告警。</p>
 它的工作是確保只有受邀且驗證過的客人（簽過章的開機軟體）能進來。</p>
 <p><strong>它是一層地基，不是一整套安全方案。</strong></p>
 </blockquote>
-<p class="pageref"><span>📖</span>書頁 77–79</p>
+<!-- -->
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.78 ｜ PDF p.97</p>
+<p>[Secure Boot] is strictly designed to protect the boot process by verifying
+the integrity of the software before the operating system fully loads. Its job is
+about verifying the integrity and authenticity of boot components until the mount
+of the encrypted rootfs. Once the operating system is up and running, Secure
+Boot's job is done.</p>
+</blockquote>
+<!-- -->
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.79 ｜ PDF p.98</p>
+<p>The Secure Boot is a very specific guard, positioned right at the entrance of
+our computer's boot process. Its job is to make sure that only invited and
+verified guests (signed boot software) are allowed into the system, preventing
+unauthorized or malicious entities from getting in before anything else starts.
+It's a foundational security layer, not a comprehensive security suite!</p>
+</blockquote>
+<p class="pageref"><span>📖</span><strong>書頁 77–79</strong> ｜ PDF 頁 96–98 ｜ <a href="./linux-secure-boot.pdf#page=96">開啟 PDF</a></p>
 <hr />
 <h2 id="s12"><span class="sec-mark">§9</span><span class="sec-label">開機流程，一棒一棒看</span></h2>
 <h3>這在解決什麼問題</h3>
@@ -1113,7 +1284,23 @@ init: entering rootfs on /dev/mapper/root...
 <p>注意 <strong><code>/dev/mapper/root</code></strong>——不是一般的 <code>/dev/sda1</code> 或 <code>/dev/mmcblk2</code>，
 而是實作 rootfs 加密的特殊區塊裝置。<strong>這就是 §5 講的 dm-crypt</strong>。</p>
 <p>接著 initramfs 的 init 被真正的 init（例子裡是 systemd）取代，開機完成。</p>
-<p class="pageref"><span>📖</span>書頁 82–96</p>
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.83 ｜ PDF p.102</p>
+<p>Modern systems use dynamic RAM (DRAM), which is not ready to be used at
+power-on. It's an uninitialized raw state, and the CPU cannot simply [load and
+execute code in it before the DRAM controller and the DRAM chips themselves have
+been set up].</p>
+</blockquote>
+<!-- -->
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.91 ｜ PDF p.110</p>
+<p>An initramfs is a small, temporary, in-memory root filesystem that the Linux
+kernel uses during its early boot stages, before the real root filesystem (the
+one containing our entire operating system) can be mounted. Think of it as a
+small, self-contained mini-operating system whose sole purpose is to help the
+main operating system get started.</p>
+</blockquote>
+<p class="pageref"><span>📖</span><strong>書頁 82–96</strong> ｜ PDF 頁 101–115 ｜ <a href="./linux-secure-boot.pdf#page=101">開啟 PDF</a></p>
 <hr />
 <h2 id="s13"><span class="sec-mark">§10</span><span class="sec-label">板子出廠：自家工廠 vs 代工廠</span></h2>
 <h3>這在解決什麼問題</h3>
@@ -1129,7 +1316,7 @@ init: entering rootfs on /dev/mapper/root...
 <li>把簽章鑰匙和（最好還有）加密鑰匙<strong>燒進 CPU 的 fuse</strong></li>
 </ol>
 <p>這一整套最佳實務叫 <strong>SSP</strong>（Software Secure Provisioning）。</p>
-<h3>情境 A：自家工廠（書頁 98–99）</h3>
+<h3>情境 A：自家工廠（書頁 98–99｜PDF 117–118）</h3>
 <p>流程：</p>
 <ol>
 <li>CPU 做一般開機，透過<strong>序列埠或 USB</strong> 載入初始程式碼
@@ -1147,7 +1334,7 @@ init: entering rootfs on /dev/mapper/root...
 （書上 Figure 2-3）</p>
 <p><strong>這個作法幾乎所有 CPU 都能實作。真正的風險點是：
 fuse 燒錄過程中不能有惡意的軟體或硬體在偷。</strong></p>
-<h3>情境 B：代工廠（書頁 100–102）</h3>
+<h3>情境 B：代工廠（書頁 100–102｜PDF 119–121）</h3>
 <p>情境 A 的假設在這裡<strong>全部不成立</strong>。</p>
 <p>就算用了金鑰交換協定，也有兩個沒法保證的事：</p>
 <ol>
@@ -1179,7 +1366,26 @@ fuse 燒錄過程中不能有惡意的軟體或硬體在偷。</strong></p>
 <li>書上提到還有另一種解法：先用一個<strong>已簽章的 bootloader</strong> 去寫 fuse
   的前置階段。但<strong>明說「不在本書範圍」</strong></li>
 </ul>
-<p class="pageref"><span>📖</span>書頁 97–102</p>
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.97 ｜ PDF p.116</p>
+<p>Firstly, we should consider that all the firmware images must be properly
+signed and (hopefully) encrypted. Only nonsensible data can be in a plain text
+form or not signed. Then we must also program the CPU to enter into its secure
+state, and then the proper signature key and (hopefully) encryption key must be
+fused too within the CPU itself. All these best practices are commonly named
+Software Secure Provisioning (SSP).</p>
+</blockquote>
+<!-- -->
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.100 ｜ PDF p.119</p>
+<p>Well, but who can assure us that we're actually communicating with a new
+device and not with malicious hardware that, by mimicking the communication
+protocol, is simply trying to steal our keys? The only option is to use an
+authentication system within the ROM code! In fact, the ROM code is considered
+secure by default, and by using a special certificate provided by the CPU vendor,
+we can be sure that we are effectively speaking with a genuine system.</p>
+</blockquote>
+<p class="pageref"><span>📖</span><strong>書頁 97–102</strong> ｜ PDF 頁 116–121 ｜ <a href="./linux-secure-boot.pdf#page=116">開啟 PDF</a></p>
 <hr />
 <h2 id="s14"><span class="sec-mark">§11</span><span class="sec-label">第一次開機才生出加密 rootfs</span></h2>
 <h3>這在解決什麼問題</h3>
@@ -1259,7 +1465,20 @@ fitimage 不加密 = 鑰匙裸奔。</p>
 <p>這裡不會有問題，因為<strong>產生和封裝都是由實際要用它的那顆 CPU 自己做的</strong>，
 不是在某台通用主機上做的。</p>
 </blockquote>
-<p class="pageref"><span>📖</span>書頁 103–105</p>
+<!-- -->
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.103 ｜ PDF p.122</p>
+<p>We have seen in "The Block-Level Encryption" section in Chapter 1 that
+usually the rootfs is encrypted with a random key, which usually is not known to
+the developers either! So, it's obvious that we cannot prebuild a valid image for
+it. Furthermore, even if we perfectly know the encryption key, there is still the
+difficulty that on some CPUs this key is often sealed, and this operation
+produces different binaries for each CPU. [...] To address this issue, the best
+thing to do is to provide an initial root filesystem as a simple archive
+(typically a compressed TAR), and during the first boot, the system automatically
+creates the encrypted rootfs and copies all files into it.</p>
+</blockquote>
+<p class="pageref"><span>📖</span><strong>書頁 103–105</strong> ｜ PDF 頁 122–124 ｜ <a href="./linux-secure-boot.pdf#page=122">開啟 PDF</a></p>
 <hr />
 <h2 id="s15"><span class="sec-mark">§12</span><span class="sec-label">更新系統要注意什麼</span></h2>
 <h3>這在解決什麼問題</h3>
@@ -1306,7 +1525,18 @@ fitimage 不加密 = 鑰匙裸奔。</p>
 <p>📌 書上說：這取決於你怎麼實作系統，等講到不同的開機方案（§13）
 就會清楚。<strong>現階段只要記住這把鑰匙必須妥善管理，防止被讀取。</strong></p>
 </blockquote>
-<p class="pageref"><span>📖</span>書頁 105–107</p>
+<!-- -->
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.105 ｜ PDF p.124</p>
+<p>Firstly, all firmware images must be properly signed and encrypted with the
+right keys, or the update may fail or, worse, the system will hang! A typical
+update can be an archive composed of the bootloader image (bootloader.enc.sign,
+if needed), the fitimage image (fitimage.enc.sign), and the rootfs as a
+compressed TAR archive (again as two separate files: rootfs.tar.zip.enc the
+compressed and signed image archive, and rootfs.signature the rootfs digital
+signature).</p>
+</blockquote>
+<p class="pageref"><span>📖</span><strong>書頁 105–107</strong> ｜ PDF 頁 124–126 ｜ <a href="./linux-secure-boot.pdf#page=124">開啟 PDF</a></p>
 <hr />
 <h1 id="s16" class="part">第三部分：兩種分割區配置（第 3 章，只講概念）</h1>
 <hr />
@@ -1442,7 +1672,7 @@ data:0:0:0:ext4
 /dev/loop9p4  ← data，只有 1M
 </code></pre>
 <hr />
-<h3>方案一：Rescue（書頁 113–118）</h3>
+<h3>方案一：Rescue（書頁 113–118｜PDF 131–136）</h3>
 <p><strong>核心想法</strong>：留一個大的 factory 分割區，裡面放完整的出廠系統，
 <strong>隨時可以可靠地還原到出廠狀態</strong>。</p>
 <p>分割區：<code>boot</code> + <code>factory</code> + <code>root</code>（各一個）</p>
@@ -1483,7 +1713,7 @@ bootmode=normal
 這些全在同一次開機序列裡完成，<strong>安裝階段可能要好幾分鐘</strong>
 （看 rootfs 多大、CPU 多快）。這段時間系統是停的。</p>
 <hr />
-<h3>方案二：A/B（書頁 161–165）</h3>
+<h3>方案二：A/B（書頁 161–165｜PDF 179–183）</h3>
 <p><strong>核心想法</strong>：<strong>兩個 root 分割區輪流用</strong>，
 所以可以<strong>在系統跑著的時候更新另一邊</strong>。</p>
 <p><strong>這是為了「系統不能停，連更新時都不能停」的場合。</strong></p>
@@ -1591,7 +1821,26 @@ bootmode=normal           bootmode=normal
 </tbody>
 </table></div>
 <p>書上說：因為 A/B 要雙倍 rootfs 空間，<strong>用 A/B 的系統通常會配比較大的儲存裝置</strong>。</p>
-<p class="pageref"><span>📖</span>書頁 109–118、161–165</p>
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.113 ｜ PDF p.131</p>
+<p>In the above list, the only encrypted partition is /root while other
+partitions are in plain text format. This is not a problem at all because in the
+boot and factory partitions all kernel and rootfs images are encrypted, while in
+/data we should be careful to encrypt all sensible files among the update
+binaries. [...] The factory schema is a way to boot the system, where we need a
+reliable way to restore the factory conditions.</p>
+</blockquote>
+<!-- -->
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.161 ｜ PDF p.179</p>
+<p>The A/B schema is a way to boot the system from two partitions
+alternatively. In this manner, we can update the system while it is running. In
+fact, as already seen, in the rescue schema, to update the system, we have to
+reboot it, then wait until the end of the update, and in the end, we can launch
+the new release. [...] the installation stage can take many minutes to complete,
+according to the rootfs size and the CPU speed.</p>
+</blockquote>
+<p class="pageref"><span>📖</span><strong>書頁 109–118、161–165</strong> ｜ PDF 頁 127–136、179–183 ｜ <a href="./linux-secure-boot.pdf#page=127">開啟 PDF</a></p>
 <hr />
 <h2 id="s18"><span class="sec-mark">§14</span><span class="sec-label">名詞小抄</span></h2>
 <div class="table-wrap"><table>
@@ -1784,37 +2033,37 @@ bootmode=normal           bootmode=normal
 <tbody>
 <tr>
 <td><strong>Linux IMA</strong></td>
-<td>「不在本書涵蓋範圍」（書頁 81）</td>
+<td>「不在本書涵蓋範圍」（書頁 81｜PDF 100）</td>
 <td><strong>rootfs 沒簽章這個洞的唯一解</strong>。優先度最高</td>
 </tr>
 <tr>
 <td><strong>keyring 細節</strong></td>
-<td>「本書不詳細解釋 keyring 是什麼」（書頁 19）</td>
+<td>「本書不詳細解釋 keyring 是什麼」（書頁 19｜PDF 39）</td>
 <td>看 kernel 的 <code>Documentation/security/keys/</code></td>
 </tr>
 <tr>
 <td><strong>RPMB 的用法</strong></td>
-<td>「不在本書範圍」，給了 OP-TEE 文件連結（書頁 111）</td>
+<td>「不在本書範圍」，給了 OP-TEE 文件連結（書頁 111｜PDF 129）</td>
 <td>另一個放鑰匙的安全地方</td>
 </tr>
 <tr>
 <td><strong>代工廠的 signed-bootloader 前置方案</strong></td>
-<td>「不在本書範圍」（書頁 100）</td>
+<td>「不在本書範圍」（書頁 100｜PDF 119）</td>
 <td>如果你的 CPU 不支援 ROM code 憑證，這是備案</td>
 </tr>
 <tr>
 <td><strong>kernel 內部怎麼用 crypto API</strong></td>
-<td>「本書不報告」（書頁 9）</td>
+<td>「本書不報告」（書頁 9｜PDF 29）</td>
 <td>只有寫 kernel driver 才需要</td>
 </tr>
 <tr>
 <td><strong>eCryptfs + encrypted key 的深入用法</strong></td>
-<td>指向 <code>Documentation/security/keys/ecryptfs.rst</code>（書頁 39）</td>
+<td>指向 <code>Documentation/security/keys/ecryptfs.rst</code>（書頁 39｜PDF 59）</td>
 <td>eCryptfs 已停止維護，優先度低</td>
 </tr>
 <tr>
 <td><strong><code>dmsetup</code> 的其他選用參數</strong></td>
-<td>「超出本書範圍」，看 <code>man 8 dmsetup</code>（書頁 66）</td>
+<td>「超出本書範圍」，看 <code>man 8 dmsetup</code>（書頁 66｜PDF 86）</td>
 <td>調校時會用到</td>
 </tr>
 <tr>
@@ -1832,10 +2081,10 @@ bootmode=normal           bootmode=normal
 <h3>這輪筆記自己跳過的（不是書上沒有，是我們決定不做）</h3>
 <ul>
 <li>第 3 章的<strong>逐步操作</strong>：Rescue 和 A/B 各自怎麼做 normal boot /
-  factory-reset / system-update（書頁 118–189）</li>
-<li>第 4 章：產線怎麼產鑰匙（fuse-centric vs hybrid）、授權問題（書頁 191–204）</li>
-<li>附錄 A：防拆偵測（tamper detection）（書頁 205–）</li>
-<li>附錄 B：U-Boot 環境變數是明文，怎麼保護跨階段的祕密（書頁 217–）</li>
+  factory-reset / system-update（書頁 118–189｜PDF 136–207）</li>
+<li>第 4 章：產線怎麼產鑰匙（fuse-centric vs hybrid）、授權問題（書頁 191–204｜PDF 208–221）</li>
+<li>附錄 A：防拆偵測（tamper detection）（書頁 205–｜PDF 222–）</li>
+<li>附錄 B：U-Boot 環境變數是明文，怎麼保護跨階段的祕密（書頁 217–｜PDF 233–）</li>
 </ul>
 <blockquote class="cal cal-plain">
 <p>附錄 B 特別值得補——它處理的是 §9 提到的 kernel command line 明文問題。</p>

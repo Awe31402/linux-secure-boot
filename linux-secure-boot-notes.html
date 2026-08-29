@@ -296,7 +296,7 @@ html{scroll-behavior:smooth;}
     <p class="eyebrow">讀書筆記 · 骨幹版</p>
     <h1>信任鏈：從 ROM code 到加密的 rootfs</h1>
     <p class="sub">Rodolfo Giometti, <em>Secure Boot Encryption with Linux: Implementation
-    for Embedded Developers</em>（Apress, 2026）第 1、2 章與第 3 章概念部分。
+    for Embedded Developers</em>（Apress, 2026）第 1、2 章、第 3 章概念部分與第 4 章。
     嵌入式 ARM 平台，不是 PC 的 UEFI + shim。</p>
     <div class="meta">
       <span>i.MX8 / i.MX9 / STM32MP1</span>
@@ -354,9 +354,14 @@ html{scroll-behavior:smooth;}
 <a class="nav-link" href="#s15"><span class="nav-mark">§12</span><span class="nav-text">更新系統要注意什麼</span></a>
 <div class="nav-part">第三部分：兩種分割區配置（第 3 章，只講概念）</div>
 <a class="nav-link" href="#s17"><span class="nav-mark">§13</span><span class="nav-text">Rescue 方案 vs A/B 方案</span></a>
-<a class="nav-link" href="#s18"><span class="nav-mark">§14</span><span class="nav-text">名詞小抄</span></a>
-<a class="nav-link" href="#s19"><span class="nav-mark">§15</span><span class="nav-text">書上沒講的（缺口清單）</span></a>
-<a class="nav-link" href="#s20"><span class="nav-text">一句話總結</span></a>
+<div class="nav-part">第四部分：鑰匙從哪來，以及法律問題（第 4 章）</div>
+<a class="nav-link" href="#s19"><span class="nav-mark">§14</span><span class="nav-text">鑰匙到底是誰生的</span></a>
+<a class="nav-link" href="#s20"><span class="nav-mark">§15</span><span class="nav-text">路線一：Fuse-Centric（全部鎖進 fuse）</span></a>
+<a class="nav-link" href="#s21"><span class="nav-mark">§16</span><span class="nav-text">路線二：Hybrid（金鑰放磁碟上，但包起來）</span></a>
+<a class="nav-link" href="#s22"><span class="nav-mark">§17</span><span class="nav-text">Secure Boot 跟 GPLv3 打架</span></a>
+<a class="nav-link" href="#s23"><span class="nav-mark">§18</span><span class="nav-text">名詞小抄</span></a>
+<a class="nav-link" href="#s24"><span class="nav-mark">§19</span><span class="nav-text">書上沒講的（缺口清單）</span></a>
+<a class="nav-link" href="#s25"><span class="nav-text">一句話總結</span></a>
       </div>
     </nav>
 
@@ -412,7 +417,7 @@ html{scroll-behavior:smooth;}
 都是你自己產、自己燒進晶片的。搜資料時關鍵字要用 <code>U-Boot</code>、<code>HAB</code>、<code>fitimage</code>、
 <code>CAAM</code>，而不是 <code>shim</code>、<code>MOK</code>、<code>sbsign</code>。</p>
 <p><strong>書的目標讀者</strong>是資深嵌入式開發者，所以很多名詞它直接用不解釋。
-這份筆記會把那些補上，統一收在 <a href="#14-名詞小抄">§14 名詞小抄</a>。</p>
+這份筆記會把那些補上，統一收在 <a href="#18-名詞小抄">§18 名詞小抄</a>。</p>
 <hr />
 <h1 id="s2" class="part">第一部分：加密的基本零件（第 1 章）</h1>
 <p>這一整章在回答一個問題：<strong>鑰匙要放哪裡，才不會被拿走？</strong></p>
@@ -1841,8 +1846,284 @@ the new release. [...] the installation stage can take many minutes to complete,
 according to the rootfs size and the CPU speed.</p>
 </blockquote>
 <p class="pageref"><span>📖</span><strong>書頁 109–118、161–165</strong> ｜ PDF 頁 127–136、179–183 ｜ <a href="./linux-secure-boot.pdf#page=127">開啟 PDF</a></p>
+<h1 id="s18" class="part">第四部分：鑰匙從哪來，以及法律問題（第 4 章）</h1>
+<p>前三章從頭到尾假設「鑰匙已經在那了」——fuse 裡有公鑰、CAAM 裡有金鑰、
+<code>/factory/dek</code> 裡有主鑰匙。這一章補上唯一沒回答的問題，
+外加一個跟程式無關、但會讓你被告的問題。</p>
 <hr />
-<h2 id="s18"><span class="sec-mark">§14</span><span class="sec-label">名詞小抄</span></h2>
+<h2 id="s19"><span class="sec-mark">§14</span><span class="sec-label">鑰匙到底是誰生的</span></h2>
+<h3>這在解決什麼問題</h3>
+<p>信任鏈的每一棒都要驗簽章、要解密。那<strong>那些鑰匙是誰、什麼時候、用什麼工具生出來的</strong>？</p>
+<p>書上自己承認前面跳過了這題：rootfs 的加解密很單純（OpenSSL 或 dm-crypt，見 §5），
+但 <strong>bootloader（TF-A、U-Boot）和 fitimage 的部分從來沒講細節</strong>。</p>
+<h3>為什麼拖到最後一章才講</h3>
+<p>因為<strong>每家 CPU 廠的做法都不一樣</strong>。沒有一套通用流程可以講。</p>
+<p>所以書的策略是：先講通則，再舉兩個具體平台當例子，讓你自己套到手上的晶片。</p>
+<h3>兩條路線</h3>
+<p>差別只有一個問題：<strong>加密金鑰放哪裡？</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th><strong>Fuse-Centric</strong>（§15）</th>
+<th><strong>Hybrid</strong>（§16）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>簽章公鑰的雜湊</td>
+<td>fuse</td>
+<td>fuse</td>
+</tr>
+<tr>
+<td><strong>加密金鑰</strong></td>
+<td><strong>也在 fuse</strong></td>
+<td><strong>在磁碟上的 wrapped 檔案</strong></td>
+</tr>
+<tr>
+<td>範例平台</td>
+<td>STM32MP1x（ST）</td>
+<td>i.MX（NXP）</td>
+</tr>
+<tr>
+<td>換金鑰</td>
+<td>燒了就改不了</td>
+<td>可以換</td>
+</tr>
+</tbody>
+</table></div>
+<p>簽章那半邊兩條路線<strong>完全一樣</strong>，差的只有解密那半邊。</p>
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.191 ｜ PDF p.208</p>
+<p>In this book, we have seen several techniques to implement a good Chain-of-Trust
+[...] However, we never talked about how we can effectively do encryption and
+signature for any single image that composes the Chain-of-Trust. [...] Keep in
+mind that each CPU vendor employs a unique approach for these steps. Therefore,
+the following sections maintain a general discussion. For concrete examples,
+however, we present two specific solutions that can be readily adapted to other
+platforms.</p>
+</blockquote>
+<p class="pageref"><span>📖</span><strong>書頁 191–192</strong> ｜ PDF 頁 208–209 ｜ <a href="./linux-secure-boot.pdf#page=208">開啟 PDF</a></p>
+<hr />
+<h2 id="s20"><span class="sec-mark">§15</span><span class="sec-label">路線一：Fuse-Centric（全部鎖進 fuse）</span></h2>
+<h3>這在解決什麼問題</h3>
+<p>最直接的想法：<strong>所有祕密都燒進晶片，磁碟上一個祕密都不放。</strong></p>
+<p>加密金鑰和簽章公鑰（或它的雜湊，為了省 fuse 空間）<strong>兩個都進 fuse</strong>。</p>
+<h3 class="h3-key">🎯 「受保護的 fuse」是什麼意思</h3>
+<p>不是「別人讀不到」，而是：</p>
+<blockquote class="cal cal-plain">
+<p><strong>Normal World 讀不到，只有 Secure World 讀得到。</strong></p>
+</blockquote>
+<p>翻成 §9 的話：kernel 和你的應用程式<strong>直接讀不到</strong>這些 fuse，
+只有 TF-A、OP-TEE 那一側可以。</p>
+<p>所以就算 Linux 整個被攻破，想拿 fuse 裡的祕密<strong>還是得穿過 Secure World</strong>。
+這就是 §9 講的 TrustZone 兩個世界，在這裡的實際用途。</p>
+<h3>怎麼運作（以 STM32MP1x 為例）</h3>
+<p>有個容易誤會的地方：<strong>公鑰本身不在 fuse 裡</strong>，它是<strong>包在 initial image 裡</strong>的。
+fuse 裡放的只是它的<strong>雜湊</strong>。</p>
+<p>ROM code 開機時做三步：</p>
+<pre><code>1. 從 initial image 取出公鑰 → 算雜湊 → 跟 fuse 裡的比對
+   ↓ 對得上，公鑰通過驗證
+2. 用這把公鑰驗 payload 的簽章
+   ↓ 簽章有效
+3. 解密 payload，執行，進入下一階段
+</code></pre>
+<p>（書上 Figure 4-1）</p>
+<p><strong>為什麼要繞這一圈</strong>：公鑰很大，fuse 空間很貴。存雜湊只要幾十 bytes，
+效果一樣——公鑰被換掉，雜湊就對不上。</p>
+<h3>指令長什麼樣</h3>
+<p>工具是 ST 的 <code>STM32_KeyGen_CLI</code>。產簽章金鑰對：</p>
+<pre><code class="language-bash">STM32_KeyGen_CLI -abs stm32mp13-key/ -pwd &lt;8 個密碼&gt; -n 8
+</code></pre>
+<p><code>-n 8</code> 是因為 <strong>STM32MP1x 支援 8 組金鑰對</strong>。</p>
+<blockquote class="cal cal-warn">
+<p>⚠️ 書上範例把 8 個密碼<strong>全設成同一個</strong> <code>azerty</code>，並明講
+這只是範例——實際上<strong>要用不同的密碼</strong>。</p>
+</blockquote>
+<p>產加密金鑰：</p>
+<pre><code class="language-bash">STM32_KeyGen_CLI -rand 16 stm32mp13-key/stm32mp_encryption_key.bin
+</code></pre>
+<p>燒進 fuse 是在 <strong>U-Boot 裡</strong>做的，<code>stm32key select</code> 先選要燒哪一區：</p>
+<pre><code>STM32MP&gt; stm32key select PKHTH    # 公鑰雜湊表的雜湊
+STM32MP&gt; stm32key select EDMK     # Encrypted Device Master Key
+</code></pre>
+<blockquote class="cal cal-gap">
+<p>📌 逐步流程（每個參數什麼意思、燒錯會怎樣）<strong>不在這輪筆記範圍</strong>，
+真的要做請翻書頁 193–195（PDF 210–212）。</p>
+</blockquote>
+<!-- -->
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.192 ｜ PDF p.209</p>
+<p>This approach is based on the fact that all cryptographic secrets are held in
+protected FUSEs; that is, both the encryption key and the signing public key (or
+its hash, to save space) are securely fused into the chip. Protected FUSEs are
+designed to enhance security by restricting direct access from the normal world
+(for instance, the kernel and its applications). Only the secured world (like ATF
+and OPTEE) can read these FUSEs.</p>
+</blockquote>
+<!-- -->
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.192 ｜ PDF p.209</p>
+<p>In this architecture, the public key used for signature verification is not
+directly stored in the FUSEs, but it is packed into the initial image [...] The
+ROM code loads this initial image and then, as a first step, checks the public key
+against the hash stored in the FUSEs. If the hash matches, then the key is
+validated, and it can be used to check the signature.</p>
+</blockquote>
+<p class="pageref"><span>📖</span><strong>書頁 192–196</strong> ｜ PDF 頁 209–213 ｜ <a href="./linux-secure-boot.pdf#page=209">開啟 PDF</a></p>
+<hr />
+<h2 id="s21"><span class="sec-mark">§16</span><span class="sec-label">路線二：Hybrid（金鑰放磁碟上，但包起來）</span></h2>
+<h3>這在解決什麼問題</h3>
+<p>Fuse 燒了就<strong>改不了</strong>。加密金鑰如果哪天想換（外洩了、產品改版），
+Fuse-Centric 這條路走不通。</p>
+<p>Hybrid 的答案：<strong>簽章那半邊照舊燒 fuse，加密金鑰改放磁碟上的 wrapped 檔案。</strong></p>
+<h3>怎麼運作</h3>
+<ul>
+<li>fuse 裡<strong>只放公鑰的雜湊</strong>（簽章驗證流程跟 §15 一模一樣）</li>
+<li>加密金鑰<strong>封起來</strong>（wrap，見 §4）存在磁碟上</li>
+<li>開機時 ROM code <strong>除了 initial image，還要多載入這個檔案</strong>，
+  先解開它拿到金鑰，才能解密第一棒 bootloader</li>
+</ul>
+<p>i.MX 上這個檔案叫 <strong>DEK blob</strong>。</p>
+<h3 class="h3-key">🎯 <code>/factory/dek</code> 是從這裡來的</h3>
+<p>§13 看到 rescue 方案的 <code>/factory/</code> 裡有個 <code>dek</code> 檔案，當時只說「系統主加密鑰匙」。</p>
+<p><strong>現在知道它是什麼了</strong>：它就是這裡講的 DEK blob，
+是 hybrid 路線把加密金鑰封起來之後的產物。</p>
+<p>也解釋了 §13 那句「有些 CPU 用別的方式管理主鑰匙，那些系統上根本不會有這個檔案」
+——那些就是走 Fuse-Centric 的（金鑰在 fuse 裡，不需要檔案）。</p>
+<h3>指令長什麼樣</h3>
+<p>工具是 NXP 的 <strong>cst</strong>（IMX_CST_TOOL，要去 NXP 網站下載）。大致三段：</p>
+<pre><code class="language-bash">./ahab_pki_tree.sh          # 互動式產 PKI 金鑰樹（問你曲線、雜湊、年限…）
+srktool -a -d sha256 ...    # 從憑證算出 SRK 雜湊，這就是要燒進 fuse 的東西
+openssl rand 32 &gt; dek.bin   # 加密金鑰就是 256-bit 亂數
+</code></pre>
+<p>燒 fuse 和產 DEK blob 都在 U-Boot 裡：</p>
+<pre><code>iMX9&gt; fuse prog 16 0 0x64D18B67      # SRK 雜湊，一個 word 一個 word 燒
+iMX9&gt; dek_blob ${loadaddr} 0x81001000 256   # 把金鑰封成 blob
+</code></pre>
+<p>範例產出的 DEK blob 是 <strong>88 bytes</strong>。</p>
+<h3>⚠️ 兩個書上特別點出的注意事項</h3>
+<p><strong>(1) DEK blob 必須在 CPU 已經進入 secure mode 之後才產。</strong></p>
+<blockquote class="cal cal-plain">
+<p>因為<strong>設計上</strong>，CPU 不在 secure mode 時，master key 是一把<strong>假的（dummy）</strong>；
+進了 secure mode 才是真值。</p>
+<p>所以在非安全狀態產出來的 blob，<strong>看起來會成功，但根本不能用</strong>。</p>
+</blockquote>
+<p><strong>(2) 金鑰沒燒進 fuse，所以換得掉——但產 blob 的環境必須是安全的。</strong></p>
+<p>這是 hybrid 的取捨：換得掉是好處，但也代表產生的那一刻多一個可被偷的時機。</p>
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.196 ｜ PDF p.213</p>
+<p>This approach is different from the previous one because, in this case, only the
+public key hash is stored in the FUSEs, while the encryption key is securely
+provided by a wrapped file stored on a mass storage. So, regarding the signature
+checking, nothing changes against the previous example, while for the decryption,
+the system first unwraps the encryption key and then starts the decryption. This
+mechanism is used by the i.MX CPU family by NXP, where the wrapped file that
+protects the encryption key is named DEK blob.</p>
+</blockquote>
+<!-- -->
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.200 ｜ PDF p.217</p>
+<p>1) The final DEK blob file must be generated when the CPU is already in secure
+mode; otherwise, the final result will not work. In fact, by design, when the CPU
+is not in secure mode, the master key is a dummy key, while in secure mode, it
+assumes its real value. 2) Since the encryption key is not burned into FUSEs, we
+can easily change it. On the other side, we must provide a secure environment for
+the DEK blob file generation!</p>
+</blockquote>
+<p class="pageref"><span>📖</span><strong>書頁 196–201</strong> ｜ PDF 頁 213–218 ｜ <a href="./linux-secure-boot.pdf#page=213">開啟 PDF</a></p>
+<hr />
+<h2 id="s22"><span class="sec-mark">§17</span><span class="sec-label">Secure Boot 跟 GPLv3 打架</span></h2>
+<h3 class="h3-key">🎯 這節跟技術無關，但可能比技術更會害到你</h3>
+<h3>問題長這樣</h3>
+<p><strong>GPLv3 第 6 條</strong>要求：如果你把 GPLv3 軟體裝在「User Product」上出貨，
+你必須提供 <strong>Installation Information</strong>——讓使用者能把<strong>自己改過的版本</strong>
+裝回去而且跑得起來。</p>
+<p><strong>但 Secure Boot 的定義就是「只接受廠商簽過的東西」。</strong></p>
+<p>這兩件事直接對撞。</p>
+<h3>這有名字：Tivoization</h3>
+<blockquote class="cal cal-plain">
+<p><strong>Tivoization</strong> = 用 copyleft 授權（GPL）的軟體，
+但硬體上加安全機制，<strong>擋住使用者裝自己改過的版本</strong>。</p>
+</blockquote>
+<p>名字來自 <strong>TiVo</strong>（一家做數位錄影機 DVR 的公司），
+他們用了 GPL 軟體，但設計上主動擋掉改過的軟體。</p>
+<p>Richard Stallman 和 <strong>FSF</strong>（自由軟體基金會）認為這剝奪了 GPL 要保護的自由，
+把這種硬體叫做 <strong>proprietary tyrants</strong>（專有暴君）。</p>
+<h3>好消息：核心元件不衝突</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>元件</th>
+<th>授權</th>
+<th>有沒有事</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>U-Boot、Linux kernel</td>
+<td>主要是 <strong>GPLv2</strong></td>
+<td>✅ 沒事（GPLv2 沒有第 6 條那段）</td>
+</tr>
+<tr>
+<td>TF-A、OP-TEE</td>
+<td><strong>BSD / MIT</strong></td>
+<td>✅ 沒事（不是 copyleft）</td>
+</tr>
+<tr>
+<td>使用者空間的某些程式</td>
+<td><strong>GPLv3</strong> 或更嚴格</td>
+<td>⚠️ <strong>這裡才是問題</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>所以要小心的是<strong>你放進 rootfs 的那些使用者空間程式</strong>。</p>
+<h3>書上給的兩個選擇</h3>
+<p><strong>選擇 1：不用那些程式</strong>（或自己重寫一份）。</p>
+<p><strong>選擇 2：提供一條合規的路。</strong> 具體作法：</p>
+<pre><code>        同一台硬體，兩個 bootloader
+        ┌─────────────────┬─────────────────┐
+        │  安全版 bootloader │ 修改版 bootloader │
+        │       ↓          │        ↓         │
+        │  加密+簽章 kernel  │   明文 kernel     │
+        │       ↓          │        ↓         │
+        │  加密 rootfs      │   明文 rootfs     │
+        │  （含專有程式）    │  （只有 GPLv3 元件，│
+        │                  │   **不含專有程式**） │
+        │  信任鏈繼續 ✅     │  信任鏈到此為止 ⛔  │
+        └─────────────────┴─────────────────┘
+</code></pre>
+<p>（書上 Figure 4-3）</p>
+<p><strong>關鍵在那個「不含專有程式」</strong>：</p>
+<blockquote class="cal cal-plain">
+<p>給使用者的明文 rootfs <strong>只放 GPLv3 的元件，把你的專有程式排除掉</strong>。
+這樣使用者可以改、可以重跑 GPLv3 的部分（滿足第 6 條），
+而你的專有程式從來沒離開過受保護的那一邊。</p>
+</blockquote>
+<p>書上的說法：左邊那條路，專有程式被信任鏈保護著；
+右邊那條路，<strong>根本沒有東西需要保護</strong>。</p>
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.201 ｜ PDF p.218</p>
+<p>Since every Secure Boot implementation only accepts manufacturer-signed binaries
+and does not provide a simple mechanism for the final user to register their own
+cryptographic keys (or install their own signed kernel), it can be considered
+conflictual! Such a restrictive implementation is in potential conflict with
+Section 6 of the GPLv3 because it fails to provide the necessary Installation
+Information for the user to exercise their right to modify [it].</p>
+</blockquote>
+<!-- -->
+<blockquote class="cal cal-src">
+<p>📄 <strong>原文</strong>　書 p.202 ｜ PDF p.219</p>
+<p>This last step can be easily implemented by replacing our secured bootloader with
+another one that allows loading a plain text kernel, which in turn loads a plain
+text root filesystem. Crucially, if the secured system includes a proprietary
+application, this plain text root filesystem provided to the user must only
+contain the GPLv3 software components and must exclude the proprietary
+application.</p>
+</blockquote>
+<p class="pageref"><span>📖</span><strong>書頁 201–204</strong> ｜ PDF 頁 218–221 ｜ <a href="./linux-secure-boot.pdf#page=218">開啟 PDF</a></p>
+<hr />
+<h2 id="s23"><span class="sec-mark">§18</span><span class="sec-label">名詞小抄</span></h2>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -1980,7 +2261,7 @@ according to the rootfs size and the CPU speed.</p>
 <tr>
 <td><strong>DEK</strong></td>
 <td>Data Encryption Key</td>
-<td>系統主加密鑰匙。i.MX8 上是 <code>/factory/dek</code>，其他 CPU 可能沒有</td>
+<td>系統主加密鑰匙。i.MX 上封成 <strong>DEK blob</strong> 存為 <code>/factory/dek</code>；走 fuse-centric 的 CPU 沒有這個檔案（§16）</td>
 </tr>
 <tr>
 <td><strong>eMMC</strong></td>
@@ -2015,12 +2296,52 @@ according to the rootfs size and the CPU speed.</p>
 <tr>
 <td><strong>FUSE</strong></td>
 <td>Filesystem in Userspace</td>
-<td>讓非 root 使用者在使用者空間實作檔案系統的介面</td>
+<td>讓非 root 使用者在使用者空間實作檔案系統的介面。<strong>跟晶片的 fuse 沒有關係</strong>，同名不同物</td>
+</tr>
+<tr>
+<td><strong>Fuse-Centric</strong></td>
+<td>—</td>
+<td>產鑰匙路線一：加密金鑰與簽章公鑰雜湊<strong>全燒進 fuse</strong>。範例平台 STM32MP1x（§15）</td>
+</tr>
+<tr>
+<td><strong>Hybrid</strong></td>
+<td>—</td>
+<td>產鑰匙路線二：fuse 只放公鑰雜湊，加密金鑰封成檔案放磁碟。範例平台 i.MX（§16）</td>
+</tr>
+<tr>
+<td><strong>DEK blob</strong></td>
+<td>—</td>
+<td>hybrid 路線把加密金鑰封起來的產物。<strong>必須在 CPU 已進 secure mode 時產</strong>，否則封它的是一把假的 master key</td>
+</tr>
+<tr>
+<td><strong>SRK</strong></td>
+<td>Super Root Key</td>
+<td>i.MX / AHAB 的根金鑰。實際燒進 fuse 的是它的雜湊（<code>srktool</code> 算出來那串）</td>
+</tr>
+<tr>
+<td><strong>AHAB</strong></td>
+<td>Advanced High Assurance Boot</td>
+<td>NXP 新一代安全開機機制（HAB 的後繼）。<code>ahab_pki_tree.sh</code> 產的就是它的金鑰樹</td>
+</tr>
+<tr>
+<td><strong>PKHTH / EDMK</strong></td>
+<td>Public Key Hash Table Hash / Encrypted Device Master Key</td>
+<td>STM32MP1x 的兩塊 fuse 區域：前者放公鑰雜湊，後者放加密金鑰</td>
+</tr>
+<tr>
+<td><strong>Tivoization</strong></td>
+<td>—</td>
+<td>用 GPL 軟體但靠硬體擋住使用者裝改版。名字來自 TiVo；FSF 稱這種硬體 proprietary tyrants（§17）</td>
+</tr>
+<tr>
+<td><strong>Installation Information</strong></td>
+<td>—</td>
+<td>GPLv3 第 6 條的用語：讓使用者能把改過的版本裝回去並跑起來所需的一切資訊</td>
 </tr>
 </tbody>
 </table></div>
 <hr />
-<h2 id="s19"><span class="sec-mark">§15</span><span class="sec-label">書上沒講的（缺口清單）</span></h2>
+<h2 id="s24"><span class="sec-mark">§19</span><span class="sec-label">書上沒講的（缺口清單）</span></h2>
 <p>書本自己明說「不在範圍」的東西，之後想深入就從這裡找：</p>
 <div class="table-wrap"><table>
 <thead>
@@ -2078,11 +2399,34 @@ according to the rootfs size and the CPU speed.</p>
 </tr>
 </tbody>
 </table></div>
+<p>書上<strong>第 4 章</strong>自己說不講的：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>主題</th>
+<th>書上怎麼說</th>
+<th>備註</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>通用的產鑰匙流程</strong></td>
+<td>「每家 CPU 廠做法都不一樣，本章只做通則討論」（書頁 191｜PDF 208）</td>
+<td>只給 STM32MP1x 與 i.MX 兩個例子，其他平台要自己查廠商文件</td>
+</tr>
+<tr>
+<td><strong>cst / srktool 的演算法選項</strong></td>
+<td>「新版工具某些演算法可能已經沒了，讀者要自己挑合用的」（書頁 199｜PDF 216）</td>
+<td>書上的 <code>ecc / p384 / sha384</code> 只是當下的範例</td>
+</tr>
+</tbody>
+</table></div>
 <h3>這輪筆記自己跳過的（不是書上沒有，是我們決定不做）</h3>
 <ul>
 <li>第 3 章的<strong>逐步操作</strong>：Rescue 和 A/B 各自怎麼做 normal boot /
   factory-reset / system-update（書頁 118–189｜PDF 136–207）</li>
-<li>第 4 章：產線怎麼產鑰匙（fuse-centric vs hybrid）、授權問題（書頁 191–204｜PDF 208–221）</li>
+<li>第 4 章 4.1 的<strong>逐步指令</strong>：STM32 與 i.MX 的產鑰匙、燒 fuse 完整流程
+  （書頁 193–200｜PDF 210–217）。這是刻意的取捨，理由見 brief 第 4 節</li>
 <li>附錄 A：防拆偵測（tamper detection）（書頁 205–｜PDF 222–）</li>
 <li>附錄 B：U-Boot 環境變數是明文，怎麼保護跨階段的祕密（書頁 217–｜PDF 233–）</li>
 </ul>
@@ -2090,11 +2434,18 @@ according to the rootfs size and the CPU speed.</p>
 <p>附錄 B 特別值得補——它處理的是 §9 提到的 kernel command line 明文問題。</p>
 </blockquote>
 <hr />
-<h2 id="s20">一句話總結</h2>
+<h2 id="s25">一句話總結</h2>
 <blockquote class="cal cal-plain">
 <p><strong>Secure Boot = 一棒接一棒的驗簽 + 解密，
 從燒死在晶片裡的 ROM code 開始，到掛載加密的 rootfs 為止。
 掛載完成的那一刻，它就下班了。</strong></p>
+</blockquote>
+<!-- -->
+
+<blockquote class="cal cal-plain">
+<p><strong>而整條鏈的起點，是你在產線上燒進 fuse 的那把鑰匙——
+它決定了這台機器只認你的簽章。
+代價是使用者也不能改，所以 GPLv3 那一關要自己處理。</strong></p>
 </blockquote>
     </article>
   </div>

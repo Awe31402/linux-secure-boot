@@ -2,7 +2,7 @@
 
 > Rodolfo Giometti, *Secure Boot Encryption with Linux: Implementation for
 > Embedded Developers*, Apress Pocket Guides, 2026。
-> 涵蓋範圍：第 1 章、第 2 章、第 3 章的概念部分、第 4 章。
+> 涵蓋範圍：第 1 章、第 2 章、第 3 章的概念部分、第 4 章、附錄 B。
 >
 > **出處標示**：每節結尾先附一段 📄 **原文**（引自原書，未翻譯），
 > 再標兩組頁碼——**書頁**（印在紙本上的頁碼）與 **PDF 頁**（PDF 檔的第幾頁）。
@@ -42,7 +42,7 @@
 `CAAM`，而不是 `shim`、`MOK`、`sbsign`。
 
 **書的目標讀者**是資深嵌入式開發者，所以很多名詞它直接用不解釋。
-這份筆記會把那些補上，統一收在 [§18 名詞小抄](#18-名詞小抄)。
+這份筆記會把那些補上，統一收在 [§22 名詞小抄](#22-名詞小抄)。
 
 ---
 
@@ -1812,9 +1812,324 @@ Richard Stallman 和 **FSF**（自由軟體基金會）認為這剝奪了 GPL �
 
 📖 **書頁 201–204** ｜ PDF 頁 218–221 ｜ [開啟 PDF](./linux-secure-boot.pdf#page=218)
 
+# 第五部分：階段之間怎麼傳祕密（附錄 B）
+
+第 4 章結束時，信任鏈看起來是完整的。這一篇把它拆給你看。
+
+它補的正是 §9 留下的那個標記：**bootloader 傳給 kernel 的那行參數是明文的，
+那會怎樣？**
+
 ---
 
-## §18 名詞小抄
+## §18 破口：階段之間一定會交換資訊
+
+### 這在解決什麼問題
+
+理想上，信任鏈的每一棒**應該互不依賴**——每一棒做什麼，不該取決於上一棒告訴它什麼。
+這樣鏈才不會因為「交換資訊」而斷掉。
+
+**但實務上做不到。**
+
+看 §13 就知道：bootloader 一定要告訴 kernel「現在跑 A 邊還是 B 邊」、
+「要不要做 factory reset」、「要不要跑系統更新」。這些資訊非傳不可。
+
+### ⚠️ 而傳遞的通道是明文的
+
+U-Boot 把環境變數存在非揮發性儲存裝置裡——eMMC 的某個區塊、flash 的某個分割區、
+或 EEPROM。
+
+> **這些環境變數通常既沒有加密，也沒有簽章。**
+
+所以攻擊者可以改它。
+
+### 攻擊長什麼樣
+
+**前提**：攻擊者已經拿到 root（透過被攻破的網路服務，或實體接觸序列埠）。
+書上明講這不是隨手可得的條件，但**理論上做得到，所以要當它會發生**。
+
+拿到 root 之後，第一步是把環境變數全看光：
+
+```bash
+$ fw_printenv
+ab_selector=b
+bootmode=normal
+rootname=root
+rootpart=2
+mmcboot=echo Booting from mmc ...; run mmcargs; setenv kernelargs
+  ${kernelargs} initramfs_${bootmode} boot_schema=${schema} ...
+```
+
+**§13 那些變數,全部一覽無遺。**
+
+第二步，改掉傳給 kernel 的參數：
+
+```bash
+$ fw_setenv kernelargs 'rdinit=/bin/sh'
+```
+
+下次開機，kernel **不會去跑 init，會給攻擊者一個 shell**。
+
+### 名詞：`init=` 跟 `rdinit=` 差在哪
+
+兩個都是叫 kernel「PID 1 要跑哪支程式」。差別是**去哪個檔案系統找**：
+
+| | `init=` | `rdinit=` |
+|---|---|---|
+| 去哪找 | **真正的 rootfs**（`root=` 指定的那個） | **initramfs** |
+| 沒指定時的預設 | 依序試 `/sbin/init`、`/etc/init`、`/bin/init`、`/bin/sh` | `/init` |
+
+（書上直接引 kernel 原始碼 `init/main.c` 的 `kernel_init()` 佐證。）
+
+回頭看 §9：initramfs 的 init 才是**握有解密鑰匙**的那一棒。
+所以攻擊者要打的是 `rdinit=`。
+
+### ℹ️ 兩個讓這招沒那麼好用的條件
+
+書上誠實列出來：
+
+1. **攻擊者必須猜對 `rdinit=` 的值**，猜錯下次開機系統直接掛住。
+2. **如果你用 BusyBox 做 initramfs，你意外地是安全的。**
+   BusyBox 被設計成「全能工具」，當它以 PID 1 被啟動時，
+   它會**試著扮演真正的 init**——去找初始化腳本，而不是乖乖給你一個 shell。
+   攻擊者會拿到錯誤訊息，然後 kernel panic：
+
+   ```
+   Attempted to kill init! exitcode=0x00000200
+   /bin/sh: can't open 'initramfs_normal': No such file or directory
+   ```
+
+   > 🎯 注意這是**意外的**防護，不是設計出來的。書上把它稱為
+   > 「實際上起到了安全措施的作用」——但它不是你選的，隨時可能因為
+   > 換掉 BusyBox 而消失。
+
+> 📄 **原文**　書 p.217 ｜ PDF p.233
+>
+> In normal functioning, all stages should be unrelated to each other. That is, what
+> a single stage does during its execution should not depend on the previous one to
+> ensure the chain is not broken, for example, by exchanging critical information
+> between each stage. However, achieving this mode of operation is really
+> challenging, especially between the bootloader and the kernel stage or between the
+> kernel and the following initial user space stage (the initramfs).
+
+> 📄 **原文**　書 p.218 ｜ PDF p.234
+>
+> U-Boot holds its environment in some non-volatile storage devices, for instance, a
+> block of the eMMC, a partition of a flash device, or within EEPROM, etc. Usually,
+> the environment is not encrypted nor signed, so an attacker can alter it to gain
+> access to the initramfs and then execute evil code or read secrets!
+
+📖 **書頁 217–222** ｜ PDF 頁 233–238 ｜ [開啟 PDF](./linux-secure-boot.pdf#page=233)
+
+---
+
+## §19 修法一：把 `rdinit=` 從 kernel 裡挖掉
+
+### 這在解決什麼問題
+
+BusyBox 那道意外的防線，**一個包裝腳本就繞過了**：
+
+```bash
+#!/bin/sh
+/bin/sh
+```
+
+把這個檔案叫 `sh.sh`，然後用 `rdinit=/sh.sh`。
+BusyBox 這下不是 PID 1 了（PID 1 是那個腳本），它就乖乖給你 shell。
+
+拿到 shell 之後：
+
+```
+~ # ls /etc/
+rootfs.iv
+rootfs.key
+rootfs.sign.key
+~ # cat /etc/rootfs.key
+24ccd69079643e8335e2d8dbbf81cb54ad365b798c53993b3fc7fb73d8574209
+```
+
+**鑰匙到手，整顆加密的 rootfs 開了。**
+
+（書上還附了一段純 shell 的迴圈，示範連 `/etc/rootfs.key` 是二進位檔也照樣讀得出來。）
+
+### 書上的解法：讓 `rdinit=` 失效
+
+改 kernel 原始碼 `init/main.c`，把 `rdinit_setup()` 的內容清空：
+
+```c
+static int __init rdinit_setup(char *str)
+{
+        /* 原本會把 str 存進 ramdisk_execute_command，現在什麼都不做 */
+}
+__setup("rdinit=", rdinit_setup);
+```
+
+重編、重灌 kernel 之後，攻擊者再下 `rdinit=/bin/sh`，
+那個字串會被**當成普通參數往使用者空間傳**，不再有任何效果，開機照常繼續。
+
+> 需要的話，`init=` 也可以照樣處理。
+
+### ⚠️ 這個解法的代價
+
+書上沒有明說，但從作法本身看得出來：**你得自己維護一份改過的 kernel**。
+這不是設定選項，是改原始碼。
+
+> 📌 書上只給了「把它拿掉」這一種作法，**沒有討論其他選項**
+> （例如簽章保護環境變數、或把環境變數搬到 RPMB）。
+> 想要別的方向，書上沒有答案。
+
+> 📄 **原文**　書 p.224 ｜ PDF p.240
+>
+> The first and easiest solution to address the above issue (when we can't use
+> BusyBox) is to completely disable the rdinit= kernel option argument. This feature
+> is managed in the file init/main.c of the kernel sources [...] We can simply remove
+> this code or fix it as reported below [...] Of course, the same fix can also be
+> done for the init= kernel option argument if needed.
+
+📖 **書頁 223–226** ｜ PDF 頁 239–242 ｜ [開啟 PDF](./linux-secure-boot.pdf#page=239)
+
+---
+
+## §20 修法二：把鑰匙搬進 kernel——以及為什麼這招也守不住
+
+### 這在解決什麼問題
+
+就算 `rdinit=` 擋掉了，鑰匙**還是躺在 initramfs 的 `/etc/rootfs.key` 裡**，
+是一個檔案。只要有任何方法讀到那個檔案系統，鑰匙就沒了。
+
+**想法**：把鑰匙從檔案裡拿掉，改成開機時由一個**核心模組**注入 keyring。
+
+### 怎麼運作
+
+模組（書上叫 `key-injector`，原始碼在
+<https://github.com/giometti/key-injector>）做兩件事：
+
+```
+1. 建一個 keyring（名字 keyring-injector，owner 是 root）
+2. 把寫死在模組裡的鑰匙，以【logon key】的型別放進去
+```
+
+**型別是 logon 是重點**——回頭看 §4：logon key **使用者空間永遠讀不出來**，
+就算把權限全開也一樣。
+
+之後 init 就不用再把 `/etc/rootfs.key` 的內容搬進 kernel 了，直接用注入好的那把。
+
+書上還示範怎麼證明「注入的那把」跟「§13 A/B 方案在用的那把」是同一把：
+把兩個 keyring 都 link 到 session keyring，用其中一把加密、另一把解密，
+解得出來就是同一把。
+
+> 📌 模組的 C 原始碼書上拆成好幾段逐行解說（權限旗標、`current_cred()`、
+> `key_create_or_update()` 等），**不在這輪筆記範圍**。要看請翻書頁 227–233（PDF 243–249）。
+
+### 🎯 然後書上自己把這招拆了
+
+這是整篇最重要的部分。書上**在提出這個作法的同一頁**就先警告：
+
+> **把祕密塞進 kernel 本身就是一個大洞。**
+> 因為那個祕密可以輕易地從 `.ko` 檔案裡挖出來。
+> 這只是「怎麼把鑰匙嵌進 kernel」的教學範例，
+> **真實應用根本不該用模組。**
+
+然後在附錄結尾示範怎麼挖。**只要兩個指令。**
+
+**第一步，看符號表,找鑰匙藏在哪：**
+
+```bash
+$ aarch64-linux-gnu-nm key_injector.ko
+0000000000000018 r key_payload
+                 ^  ^^^^^^^^^^^
+              小寫 r    變數名字
+              = 它在 .rodata 區段
+```
+
+> **`.rodata`** = Read-Only Data，放程式裡寫死的唯讀常數。
+> 小寫 `r` 就是在告訴你「這個變數是編譯時就寫死的常數資料」。
+
+**第二步，把那段資料印出來：**
+
+```bash
+$ aarch64-linux-gnu-objdump -s -j .rodata key_injector.ko
+Contents of section .rodata:
+ 0000 6b65795f 696e6a65 63746f72 5f696e69
+ 0010 74000000 00000000 24ccd690 79643e83   ← offset 0x18 從這裡開始
+ 0020 35e2d8db bf81cb54 ad365b79 8c53993b
+ 0030 3fc7fb73 d8574209 ...
+```
+
+offset `0x18` 開始的 32 bytes 就是鑰匙：
+`24ccd690 79643e83 ... 3fc7fb73 d8574209`
+
+**跟 §19 裡 `cat /etc/rootfs.key` 讀到的完全一樣。**
+
+### 所以這招擋住了什麼、沒擋住什麼
+
+| | 擋住了嗎 |
+|---|---|
+| 從執行中的系統讀鑰匙（`cat` 檔案） | ✅ 擋住了（logon key 讀不出來） |
+| **拿到 `.ko` 檔案的人** | ❌ **完全沒擋**，兩個指令就挖出來 |
+
+換句話說：**它把問題從「保護一個檔案」變成「保護另一個檔案」。**
+
+> 📄 **原文**　書 p.226 ｜ PDF p.242
+>
+> [...] embedding a secret within the kernel is a big security hole! In fact, the
+> embedded secret can be easily extracted from the .ko file (see below in this
+> section). This scenario is used as an example of how we can embed a key within the
+> kernel code; real applications should avoid using modules at all!
+
+> 📄 **原文**　書 p.236 ｜ PDF p.252
+>
+> The key_payload symbol is marked with a lowercase r in the above output. This
+> means that key_payload is a variable residing in the .rodata (Read-Only Data)
+> section of the kernel module. [...] And we can see that the desired data are the 32
+> bytes at offset 0x18, that is, 24ccd690 79643e83 35e2d8db bf81cb54 ad365b79
+> 8c53993b 3fc7fb73 d8574209.
+
+📖 **書頁 226–236** ｜ PDF 頁 242–252 ｜ [開啟 PDF](./linux-secure-boot.pdf#page=242)
+
+---
+
+## §21 附錄 B 到底告訴我們什麼
+
+### 🎯 它沒有給你一個安全的答案
+
+三節讀下來，形狀是這樣的：
+
+```
+環境變數是明文        → 攻擊者改 rdinit= 拿到 shell
+  ↓ 但 BusyBox 意外擋住
+BusyBox 那道防線      → 一個包裝腳本就繞過
+  ↓ 修法一：挖掉 rdinit=
+鑰匙還在 /etc 裡      → 讀到檔案系統就拿到
+  ↓ 修法二：搬進 kernel 模組
+鑰匙在 .ko 的 .rodata → nm + objdump，兩個指令挖出來
+  ↓
+書上：真實應用不該用模組。（然後附錄結束了。）
+```
+
+**每一層防護都擋掉了上一層的攻擊，然後開出一個新的洞。**
+
+### 這跟前面幾章接在哪
+
+- 補上 **§9** 標記的那個問題：kernel command line 是明文，會怎樣 —— 就是這樣。
+- 呼應 **§7** 的結論：信任鏈保證的是「整個檔案系統是對的」，
+  不是「裡面每支程式是對的」。附錄 B 是同一件事在**開機參數**上的版本。
+- 呼應 **§8**：Secure Boot 是**一層地基，不是一整套安全方案**。
+
+### 📌 這篇沒講的
+
+- 環境變數本身怎麼簽章或加密 —— **書上完全沒討論**，只給了「把 `rdinit=` 拿掉」
+- 把祕密放進 **RPMB**（§13 提過的那塊安全區）—— 書上早先說「不在範圍」，
+  這裡也沒回頭補
+- 真實產品應該怎麼做 —— 書上只說「不該用模組」，**沒有給替代方案**
+
+> ⚠️ 所以讀完附錄 B **不代表你的系統就安全了**。
+> 它的價值是讓你知道洞在哪，而不是把洞補起來。
+
+📖 **書頁 217–236** ｜ PDF 頁 233–252 ｜ [開啟 PDF](./linux-secure-boot.pdf#page=233)
+
+---
+
+## §22 名詞小抄
 
 | 名詞 | 全名 | 白話 |
 |---|---|---|
@@ -1859,10 +2174,15 @@ Richard Stallman 和 **FSF**（自由軟體基金會）認為這剝奪了 GPL �
 | **PKHTH / EDMK** | Public Key Hash Table Hash / Encrypted Device Master Key | STM32MP1x 的兩塊 fuse 區域：前者放公鑰雜湊，後者放加密金鑰 |
 | **Tivoization** | — | 用 GPL 軟體但靠硬體擋住使用者裝改版。名字來自 TiVo；FSF 稱這種硬體 proprietary tyrants（§17） |
 | **Installation Information** | — | GPLv3 第 6 條的用語：讓使用者能把改過的版本裝回去並跑起來所需的一切資訊 |
+| **fw_printenv / fw_setenv** | — | 從 Linux 裡讀寫 U-Boot 環境變數的工具。攻擊者拿到 root 就能用（§18） |
+| **`init=`** | — | kernel 參數：PID 1 要從**真正的 rootfs**跑哪支程式。不指定就依序試 `/sbin/init` 等 |
+| **`rdinit=`** | — | kernel 參數：PID 1 要從 **initramfs** 跑哪支程式。不指定就跑 `/init`。附錄 B 的攻擊打的就是它 |
+| **BusyBox** | — | 把幾百個 Unix 工具包成一個執行檔的小工具集，嵌入式常用它做 initramfs。當 PID 1 時會試著扮演 init，**意外擋掉 `rdinit=/bin/sh`**（§18） |
+| **`.rodata`** | Read-Only Data | 執行檔／模組裡放編譯期寫死的唯讀常數的區段。`nm` 標小寫 `r` 的符號就在這。鑰匙寫死在程式裡就躺在這裡（§20） |
 
 ---
 
-## §19 書上沒講的（缺口清單）
+## §23 書上沒講的（缺口清單）
 
 書本自己明說「不在範圍」的東西，之後想深入就從這裡找：
 
@@ -1877,6 +2197,8 @@ Richard Stallman 和 **FSF**（自由軟體基金會）認為這剝奪了 GPL �
 | **`dmsetup` 的其他選用參數** | 「超出本書範圍」，看 `man 8 dmsetup`（書頁 66｜PDF 86） | 調校時會用到 |
 | **非 ARM 平台** | 全書以 ARM（i.MX、STM32MP1）為準 | x86 embedded 要另外查 |
 | **Windows / macOS** | 「本書不涵蓋」（前言） | — |
+| **U-Boot 環境變數本身怎麼保護** | 附錄 B 只給「把 `rdinit=` 挖掉」一種作法，沒討論簽章或加密環境變數（書頁 224｜PDF 240） | 這是附錄 B 最大的留白 |
+| **真實產品該怎麼藏鑰匙** | 「真實應用不該用模組」，但**沒給替代方案**（書頁 226｜PDF 242） | 附錄 B 只示範洞在哪，沒補洞 |
 
 書上**第 4 章**自己說不講的：
 
@@ -1892,9 +2214,9 @@ Richard Stallman 和 **FSF**（自由軟體基金會）認為這剝奪了 GPL �
 - 第 4 章 4.1 的**逐步指令**：STM32 與 i.MX 的產鑰匙、燒 fuse 完整流程
   （書頁 193–200｜PDF 210–217）。這是刻意的取捨，理由見 brief 第 4 節
 - 附錄 A：防拆偵測（tamper detection）（書頁 205–｜PDF 222–）
-- 附錄 B：U-Boot 環境變數是明文，怎麼保護跨階段的祕密（書頁 217–｜PDF 233–）
 
-> 附錄 B 特別值得補——它處理的是 §9 提到的 kernel command line 明文問題。
+> ~~附錄 B 特別值得補——它處理的是 §9 提到的 kernel command line 明文問題。~~
+> → **已補，見 §18–§21。**
 
 ---
 
@@ -1909,3 +2231,9 @@ Richard Stallman 和 **FSF**（自由軟體基金會）認為這剝奪了 GPL �
 > **而整條鏈的起點，是你在產線上燒進 fuse 的那把鑰匙——
 > 它決定了這台機器只認你的簽章。
 > 代價是使用者也不能改，所以 GPLv3 那一關要自己處理。**
+
+<!-- -->
+
+> **至於中間那些一棒傳一棒的參數：它們是明文的。
+> 附錄 B 花了 20 頁證明這件事有多好鑽，
+> 然後老實說，它也沒有答案。**

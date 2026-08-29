@@ -22,7 +22,9 @@ def split_adjacent_quotes(text):
     src, out, i, n = text.split("\n"), [], 0, len(text.split("\n"))
     while i < n:
         out.append(src[i])
-        if src[i].startswith(">"):
+        # the preceding quote may be indented (nested in a list); the following
+        # one must be top-level, or the two are part of the same list structure
+        if src[i].lstrip().startswith(">"):
             j = i + 1
             while j < n and src[j].strip() == "":
                 j += 1

@@ -1,13 +1,40 @@
 #!/usr/bin/env python3
-"""Build the HTML reading edition of the secure-boot study notes."""
+"""Build the HTML reading edition of a study-notes markdown file.
+
+With no arguments this rebuilds the secure-boot notes exactly as before.
+Pass --src/--out/--template to build a different notes file, e.g.
+
+    python3 tools/build_notes_html.py \
+        --src crypto-course-notes.md \
+        --out crypto-course-notes.html \
+        --template tools/crypto_notes_template.html
+"""
+import argparse
 import html
 import re
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-SRC = REPO / "linux-secure-boot-notes.md"
-OUT = REPO / "linux-secure-boot-notes.html"
-TEMPLATE_PATH = Path(__file__).resolve().parent / "notes_template.html"
+TOOLS = Path(__file__).resolve().parent
+
+ap = argparse.ArgumentParser(description=__doc__,
+                             formatter_class=argparse.RawDescriptionHelpFormatter)
+ap.add_argument("--src", type=Path, default=REPO / "linux-secure-boot-notes.md",
+                help="markdown source (default: linux-secure-boot-notes.md)")
+ap.add_argument("--out", type=Path, default=None,
+                help="html output (default: <src> with .html suffix)")
+ap.add_argument("--template", type=Path, default=TOOLS / "notes_template.html",
+                help="html template (default: tools/notes_template.html)")
+args = ap.parse_args()
+
+SRC = args.src
+OUT = args.out if args.out else SRC.with_suffix(".html")
+TEMPLATE_PATH = args.template
+
+if not SRC.exists():
+    raise SystemExit(f"source not found: {SRC}")
+if not TEMPLATE_PATH.exists():
+    raise SystemExit(f"template not found: {TEMPLATE_PATH}")
 
 md_text = SRC.read_text(encoding="utf-8")
 

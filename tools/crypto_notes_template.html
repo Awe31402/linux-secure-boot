@@ -1,0 +1,371 @@
+<title>密碼學課程筆記</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&display=swap">
+
+<style>
+/* ── tokens ─────────────────────────────────────────────────────────── */
+:root{
+  --ground:#F4F7F5; --surface:#FFFFFF; --surface-2:#EDF2EE;
+  --ink:#16211F; --ink-soft:#55635F; --ink-faint:#8A968F;
+  --rule:#D9E0DB; --rule-soft:#E7ECE8;
+  --accent:#0F6E63; --accent-soft:#D7E8E4; --accent-ink:#0B554C;
+  --alert:#A8341F; --alert-soft:#F3DFDA;
+  --code-bg:#EBF0EC; --code-ink:#1D2E2A;
+  --shadow:0 1px 2px rgba(22,33,31,.05), 0 8px 24px -18px rgba(22,33,31,.35);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0D1513; --surface:#141E1B; --surface-2:#19241F;
+    --ink:#E4EAE6; --ink-soft:#95A39D; --ink-faint:#6D7C76;
+    --rule:#26332E; --rule-soft:#1D2926;
+    --accent:#5FC7B4; --accent-soft:#173630; --accent-ink:#8FDBCC;
+    --alert:#E8886F; --alert-soft:#3A211B;
+    --code-bg:#101A17; --code-ink:#CFDAD5;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -18px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0D1513; --surface:#141E1B; --surface-2:#19241F;
+  --ink:#E4EAE6; --ink-soft:#95A39D; --ink-faint:#6D7C76;
+  --rule:#26332E; --rule-soft:#1D2926;
+  --accent:#5FC7B4; --accent-soft:#173630; --accent-ink:#8FDBCC;
+  --alert:#E8886F; --alert-soft:#3A211B;
+  --code-bg:#101A17; --code-ink:#CFDAD5;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -18px rgba(0,0,0,.8);
+}
+
+/* ── type stacks: latin from Plex, CJK from the system ──────────────── */
+:root{
+  --cjk:"PingFang TC","Noto Sans CJK TC","Noto Sans TC","Microsoft JhengHei","Hiragino Sans GB";
+  --f-body:"IBM Plex Serif",var(--cjk),Georgia,serif;
+  --f-head:"IBM Plex Sans Condensed",var(--cjk),"Helvetica Neue",Arial,sans-serif;
+  --f-mono:"IBM Plex Mono",var(--cjk),ui-monospace,Menlo,Consolas,monospace;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:var(--f-body); font-size:17px; line-height:1.78;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ── shell ──────────────────────────────────────────────────────────── */
+.shell{max-width:1240px; margin:0 auto; padding:0 24px 96px;}
+.cols{display:grid; grid-template-columns:236px minmax(0,1fr); gap:56px; align-items:start;}
+
+/* ── masthead ───────────────────────────────────────────────────────── */
+.mast{padding:56px 0 32px; border-bottom:1px solid var(--rule);}
+.eyebrow{
+  font-family:var(--f-mono); font-size:11.5px; font-weight:500;
+  letter-spacing:.18em; text-transform:uppercase; color:var(--accent);
+  margin:0 0 14px;
+}
+.mast h1{
+  font-family:var(--f-head); font-weight:700; font-size:clamp(30px,4.6vw,50px);
+  line-height:1.1; letter-spacing:-.015em; margin:0; text-wrap:balance;
+}
+.mast .sub{
+  font-size:15px; color:var(--ink-soft); margin:14px 0 0; max-width:60ch;
+}
+.mast .sub em{font-style:italic;}
+.meta{
+  display:flex; flex-wrap:wrap; gap:8px 10px; margin:22px 0 0;
+  font-family:var(--f-mono); font-size:11.5px; letter-spacing:.03em;
+}
+.meta span{
+  padding:4px 10px; border:1px solid var(--rule); border-radius:2px;
+  color:var(--ink-soft); background:var(--surface);
+}
+.source{
+  margin:18px 0 0; max-width:72ch; font-size:13px; line-height:1.7;
+  color:var(--ink-soft); padding:12px 14px; border-radius:3px;
+  background:var(--surface); border:1px solid var(--rule-soft);
+  border-left:3px solid var(--accent);
+}
+.source strong{
+  font-family:var(--f-mono); font-size:11px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--accent); font-weight:600;
+}
+.source em{font-style:normal; color:var(--ink); font-weight:600;}
+.source code{
+  font-family:var(--f-mono); font-size:12px; background:var(--code-bg);
+  color:var(--code-ink); padding:1px 5px; border-radius:2px;
+}
+.source a{color:var(--accent-ink); text-underline-offset:2px;}
+
+/* ── the chain strip: the page's one flourish ───────────────────────── */
+.chain{
+  margin:34px 0 0; padding:20px 22px; background:var(--surface);
+  border:1px solid var(--rule); border-radius:3px; box-shadow:var(--shadow);
+  overflow-x:auto;
+}
+.chain-cap{
+  font-family:var(--f-mono); font-size:10.5px; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--ink-faint); margin:0 0 14px;
+}
+.chain-row{display:flex; align-items:stretch; gap:0; min-width:640px;}
+.link{
+  flex:1; padding:11px 12px 12px; border:1px solid var(--accent);
+  border-radius:2px; background:var(--accent-soft);
+  display:flex; flex-direction:column; gap:3px;
+}
+.link b{
+  font-family:var(--f-head); font-weight:700; font-size:14px;
+  letter-spacing:.01em; color:var(--accent-ink); line-height:1.25;
+}
+.link i{
+  font-style:normal; font-family:var(--f-mono); font-size:10.5px;
+  color:var(--ink-soft); line-height:1.4;
+}
+.link.broken{
+  border-style:dashed; border-color:var(--alert); background:var(--alert-soft);
+}
+.link.broken b{color:var(--alert);}
+.arr{
+  flex:0 0 30px; display:grid; place-items:center;
+  font-family:var(--f-mono); font-size:13px; color:var(--ink-faint);
+}
+.chain-note{
+  margin:13px 0 0; font-family:var(--f-mono); font-size:11px;
+  color:var(--ink-soft); line-height:1.6;
+}
+.chain-note b{color:var(--alert); font-weight:500;}
+
+/* ── sidebar nav ────────────────────────────────────────────────────── */
+.rail{position:sticky; top:0; max-height:100vh; overflow-y:auto; padding:40px 0 40px;}
+.rail-cap{
+  font-family:var(--f-mono); font-size:10.5px; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--ink-faint);
+  padding-bottom:10px; margin-bottom:10px; border-bottom:1px solid var(--rule);
+}
+.nav-part{
+  font-family:var(--f-head); font-weight:700; font-size:12px;
+  letter-spacing:.05em; color:var(--ink); margin:20px 0 8px;
+}
+.nav-part:first-of-type{margin-top:4px;}
+.nav-link{
+  display:flex; gap:9px; align-items:baseline; text-decoration:none;
+  color:var(--ink-soft); padding:4px 8px 4px 0; border-left:2px solid transparent;
+  padding-left:10px; margin-left:-12px; line-height:1.45;
+}
+.nav-mark{
+  font-family:var(--f-mono); font-size:11px; color:var(--ink-faint);
+  flex:0 0 26px; font-variant-numeric:tabular-nums;
+}
+.nav-text{font-family:var(--f-head); font-weight:600; font-size:13.5px;}
+.nav-link:hover{color:var(--ink); border-left-color:var(--rule);}
+.nav-link.on{color:var(--accent); border-left-color:var(--accent);}
+.nav-link.on .nav-mark{color:var(--accent);}
+.nav-link:focus-visible, a:focus-visible{
+  outline:2px solid var(--accent); outline-offset:3px; border-radius:2px;
+}
+
+/* ── article ────────────────────────────────────────────────────────── */
+.doc{padding:40px 0 0; max-width:70ch;}
+.doc>*+*{margin-top:1.05em;}
+.doc p{margin:0;}
+.doc a{color:var(--accent-ink); text-underline-offset:2px;}
+
+h1.part{
+  font-family:var(--f-head); font-weight:700; font-size:13px;
+  letter-spacing:.16em; text-transform:uppercase; color:var(--accent);
+  margin:76px 0 0; padding-bottom:12px; border-bottom:2px solid var(--accent);
+}
+h1.part+*{margin-top:34px;}
+
+.doc h2{
+  font-family:var(--f-head); font-weight:700; font-size:clamp(23px,3vw,30px);
+  line-height:1.2; letter-spacing:-.01em; margin:62px 0 0;
+  display:flex; gap:14px; align-items:baseline; text-wrap:balance;
+  scroll-margin-top:20px;
+}
+.sec-mark{
+  font-family:var(--f-mono); font-size:13px; font-weight:500; color:var(--accent);
+  flex:0 0 auto; font-variant-numeric:tabular-nums; letter-spacing:0;
+}
+.doc h2+*{margin-top:22px;}
+
+.doc h3{
+  font-family:var(--f-head); font-weight:700; font-size:16.5px;
+  letter-spacing:.02em; color:var(--ink); margin:38px 0 0;
+}
+.doc h3.h3-key{color:var(--accent);}
+.doc h3+*{margin-top:14px;}
+
+.doc ul,.doc ol{margin:0; padding-left:1.35em;}
+.doc li+li{margin-top:.42em;}
+.doc li>ul,.doc li>ol{margin-top:.42em;}
+.doc strong{font-weight:600;}
+
+hr{border:0; border-top:1px solid var(--rule-soft); margin:44px 0 0;}
+
+/* ── code ───────────────────────────────────────────────────────────── */
+code{
+  font-family:var(--f-mono); font-size:.855em; background:var(--code-bg);
+  color:var(--code-ink); padding:.12em .38em; border-radius:2px;
+}
+pre{
+  margin:0; background:var(--code-bg); border:1px solid var(--rule-soft);
+  border-radius:3px; padding:15px 17px; overflow-x:auto; line-height:1.6;
+}
+pre code{background:none; padding:0; font-size:12.9px;}
+
+/* ── tables ─────────────────────────────────────────────────────────── */
+.table-wrap{overflow-x:auto; border:1px solid var(--rule); border-radius:3px; background:var(--surface);}
+table{border-collapse:collapse; width:100%; font-size:14.5px; line-height:1.6;}
+th,td{
+  padding:9px 14px; text-align:left; vertical-align:top;
+  border-bottom:1px solid var(--rule-soft);
+}
+th{
+  font-family:var(--f-head); font-weight:700; font-size:12.5px;
+  letter-spacing:.05em; text-transform:uppercase; color:var(--ink-soft);
+  background:var(--surface-2); border-bottom:1px solid var(--rule); white-space:nowrap;
+}
+tr:last-child td{border-bottom:0;}
+td code{font-size:.9em;}
+
+/* ── callouts ───────────────────────────────────────────────────────── */
+blockquote.cal{
+  margin:0; padding:13px 18px; border-left:3px solid var(--rule);
+  background:var(--surface); border-radius:0 3px 3px 0; font-size:15.5px;
+}
+blockquote.cal>*+*{margin-top:.7em;}
+blockquote.cal p{margin:0;}
+.cal-key{border-left-color:var(--accent); background:var(--accent-soft);}
+.cal-warn{border-left-color:var(--alert); background:var(--alert-soft);}
+.cal-gap{border-left-color:var(--ink-faint); background:var(--surface-2); color:var(--ink-soft);}
+.cal-tip,.cal-note{border-left-color:var(--accent); background:var(--surface-2);}
+.cal-plain{border-left-color:var(--rule); background:var(--surface-2);}
+
+/* ── 📄 verbatim excerpts from the book ─────────────────────────────── */
+.cal-src{
+  border-left-color:var(--ink-faint); background:var(--surface-2);
+  font-family:var(--f-body); font-size:14.5px; line-height:1.72;
+  color:var(--ink-soft); font-style:italic;
+}
+.cal-src p:first-child{
+  font-family:var(--f-mono); font-style:normal; font-size:11px;
+  letter-spacing:.14em; text-transform:uppercase; color:var(--ink-faint);
+  margin-bottom:8px;
+}
+.cal-src p:first-child strong{color:var(--ink-faint); font-weight:600;}
+.cal-src p + p{margin-top:0;}
+
+/* ── page reference chips ───────────────────────────────────────────── */
+p.pageref{
+  font-family:var(--f-mono); font-size:11.5px; letter-spacing:.04em;
+  color:var(--ink-faint); margin-top:26px; padding-top:12px;
+  border-top:1px dashed var(--rule);
+}
+p.pageref span{margin-right:6px;}
+p.pageref strong{color:var(--ink-soft); font-weight:600;}
+p.pageref a{
+  color:var(--accent); text-decoration:none;
+  border-bottom:1px dotted var(--accent);
+}
+p.pageref a:hover{border-bottom-style:solid;}
+
+/* ── closing line gets weight ───────────────────────────────────────── */
+.doc h2:last-of-type ~ blockquote.cal-plain{
+  font-family:var(--f-head); font-weight:600; font-size:19px; line-height:1.6;
+  border-left-color:var(--accent); background:var(--accent-soft); color:var(--ink);
+}
+
+/* ── responsive ─────────────────────────────────────────────────────── */
+@media (max-width:900px){
+  .cols{grid-template-columns:1fr; gap:0;}
+  .rail{position:static; max-height:none; padding:28px 0 0; overflow:visible;}
+  .rail-inner{
+    display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:2px 18px;
+  }
+  .nav-part{grid-column:1/-1;}
+  .doc{padding-top:28px;}
+  body{font-size:16.5px;}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none !important; transition:none !important; scroll-behavior:auto !important;}
+}
+html{scroll-behavior:smooth;}
+</style>
+
+<div class="shell">
+
+  <header class="mast">
+    <p class="eyebrow">課程筆記 · 第 1 章</p>
+    <h1>密碼學：CIA 三目標與兩種鑰匙</h1>
+    <p class="sub">課程錄影第 1 堂（兩支影片，同一堂的前後半）。
+    從「網路本來就不安全」講到對稱式與公開金鑰為什麼互補。
+    定位是<em>考得出來</em>，不是做得出來。</p>
+    <div class="meta">
+      <span>Alice · Bob · Eve</span>
+      <span>Symmetric ↔ Public key</span>
+      <span>書頁 ↔ PDF 頁</span>
+    </div>
+
+    <p class="source">
+      <strong>出處</strong>　每節結尾標<em>來源影片</em>（影片一／影片二），不標時間戳。
+      對得上課本的再標一行 <em>📖 對照</em>：HAC 節號 ｜ 書頁 ｜ PDF 頁，可直接點開到該頁。
+      對照書是 <a href="./handbook-of-applied-cryptography.pdf">handbook-of-applied-cryptography.pdf</a>
+      （Menezes 等人，CRC Press 授權免費，合併版 803 頁）。
+      <em>書頁與 PDF 頁的差值不固定</em>——第 1 章這段是 <code>+10</code>，完整換算表見 brief。
+      <br>
+      <strong>⚠️ 來源品質</strong>　兩支影片只有自動字幕，辨識錯誤很多，老師本人也有口誤。
+      筆記寫的是<em>正確版本</em>，錯的地方就地標一次，並集中收在 §6。
+    </p>
+
+    <section class="chain" aria-label="密碼學的目標">
+      <p class="chain-cap">The Goals ／ 記憶法：C-I-A（不是美國那個）</p>
+      <div class="chain-row">
+        <div class="link"><b>Confidentiality</b><i>機密性<br>別人讀不到</i></div>
+        <div class="arr" aria-hidden="true">+</div>
+        <div class="link"><b>Integrity</b><i>完整性<br>沒被改過</i></div>
+        <div class="arr" aria-hidden="true">+</div>
+        <div class="link"><b>Authentication</b><i>認證<br>確認是誰</i></div>
+        <div class="arr" aria-hidden="true">→</div>
+        <div class="link broken"><b>Non-repudiation</b><i>第四個<br>看場景才要</i></div>
+      </div>
+      <p class="chain-note"><b>第四個不一定要</b>　Non-repudiation（事後不能賴帳）
+      會隨應用場景來來去去，不像 CIA 每次都要 —— 見 §2.5。</p>
+    </section>
+  </header>
+
+  <div class="cols">
+    <nav class="rail" aria-label="章節導覽">
+      <div class="rail-inner">
+        <p class="rail-cap">目次</p>
+<!--NAV-->
+      </div>
+    </nav>
+
+    <article class="doc">
+<!--BODY-->
+    </article>
+  </div>
+</div>
+
+<script>
+(function () {
+  var links = Array.prototype.slice.call(document.querySelectorAll(".nav-link"));
+  var byId = {};
+  links.forEach(function (a) { byId[a.getAttribute("href").slice(1)] = a; });
+  var heads = Object.keys(byId)
+    .map(function (id) { return document.getElementById(id); })
+    .filter(Boolean);
+  if (!heads.length || !("IntersectionObserver" in window)) return;
+
+  var seen = {};
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen[e.target.id] = e.isIntersecting; });
+    var current = null;
+    for (var i = 0; i < heads.length; i++) {
+      if (heads[i].getBoundingClientRect().top < 140) current = heads[i].id;
+    }
+    links.forEach(function (a) { a.classList.remove("on"); });
+    if (current && byId[current]) byId[current].classList.add("on");
+  }, { rootMargin: "-100px 0px -70% 0px", threshold: 0 });
+
+  heads.forEach(function (h) { io.observe(h); });
+})();
+</script>

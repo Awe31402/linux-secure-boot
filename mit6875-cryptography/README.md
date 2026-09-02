@@ -9,16 +9,23 @@ Instructor: Vinod Vaikuntanathan (MIT).
 ## Contents
 
 ```
-slides/   lec01.pdf … lec25.pdf  (+ lec18.pptx)
-psets/    hw1, hw3, hw4, hw5, hw6
+slides/   lec01.pdf … lec25.pdf   (25 files, complete)
+psets/    hw1.pdf … hw6.pdf       (6 files, complete)
 ```
 
-## Known gaps
+## Provenance
 
-| Item | Status |
-|---|---|
-| `slides/lec18.pdf` | The PDF link on the course site returns 404. The `.pptx` was downloaded instead (`slides/lec18.pptx`). |
-| `psets/hw2.pdf` | The link on the course site returns 404. Not available anywhere on the site. |
+Most files come straight from the live site. Two links on the course page are
+broken (404), and the current `PSETS/` directory on the site holds the **Fall
+2023** problem sets, not the Fall 2022 ones. Both were recovered from the
+course repo's git history:
+
+- Source repo: https://github.com/mit6875/mit6875.github.io
+- Commit used: `1ecfdae641` (30 Nov 2022 — the last Fall 2022 state of `PSETS/`)
+- Recovered from it: all six Fall 2022 psets, and `SLIDES/lec18.pdf`
+
+The pset due dates in these PDFs match the Fall 2022 syllabus
+(21 Sep, 5 Oct, 19 Oct, 2 Nov, 16 Nov, 7 Dec 2022).
 
 ## Lecture index
 

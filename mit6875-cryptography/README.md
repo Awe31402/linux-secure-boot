@@ -11,6 +11,7 @@ Instructor: Vinod Vaikuntanathan (MIT).
 ```
 slides/   lec01.pdf … lec25.pdf   (25 files, complete)
 psets/    hw1.pdf … hw6.pdf       (6 files, complete)
+books/    Boneh-Shoup, A Graduate Course in Applied Cryptography (1130 pp.)
 ```
 
 ## Provenance

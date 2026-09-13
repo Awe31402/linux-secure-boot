@@ -73,6 +73,8 @@ MIT 沒有公開 Fall 2022 的錄影。
 | lec01 Intro / perfect secrecy / OTP | L1 `jDsfV2ohFPs` | ✅ 內容一致，字幕差但可用 |
 | lec02 計算安全 / negligible / PRG | L2 `7YfYYIvyYb8` | ❌ **字幕壞掉**（語音被誤判成西班牙文，英文軌是亂碼）。且主題是 One-Way Functions |
 | lec02（PRG 定義、隨機性來源） | L6 `fdr6RKyjhEs` | ✅ 部分對應，字幕品質好 |
+| lec03 前半 hybrid argument / NBU | L6 `fdr6RKyjhEs` 後半 | ✅ 對得很好 |
+| lec03 後半 stateful→stateless / PRF | L7 `SmIQNWXkxeQ` 前半 | ✅ 對得很好，字幕品質差但可校正 |
 
 **未驗證（推測，做之前要確認）：**
 
@@ -81,8 +83,7 @@ MIT 沒有公開 Fall 2022 的錄影。
 | L2 One-Way Functions | lec06 |
 | L3 Number Theory | lec07–08 |
 | L4–L5 Hardcore Bits | lec06–07（Goldreich–Levin） |
-| L6 Pseudorandom Generators | lec02–03 |
-| L7 Pseudorandom Functions | lec03–04 |
+| L7 後半（GGM 樹） | lec04 |
 | L8 Trapdoor Functions | lec10 |
 | L9–L10 Public Key Encryption | lec08–10 |
 | L11 Learning with Errors | lec19 |

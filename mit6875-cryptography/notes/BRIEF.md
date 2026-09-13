@@ -150,3 +150,20 @@ whisper LNN_audio.mp3 --model turbo --language en --device cuda \
 - **背景執行時不要把輸出接到 `tail`** —— `$?` 會抓到 `tail` 的結果，任務「成功」但其實爆了。
   改成 `> run.log 2>&1` 再看 log。
 - 逐字稿留在 scratchpad，**不要 commit 進 repo**。
+
+**先判斷值不值得轉：**
+
+YouTube 有兩代自動字幕。**新版**（有標點、有大小寫）品質已經很好，自己轉**沒有加值**；
+**舊版**（無標點、全小寫、術語大量錯誤）才值得自轉。
+
+實測（L6，2018 年的 PRG 那堂，YouTube 是新版字幕）：
+
+| 詞 | YouTube | 自轉 Whisper |
+|---|---|---|
+| pseudorandom | 64 | 18 |
+| "subrandom"（錯的） | 0 | 6 |
+| distinguisher | 38 | 34 |
+
+**自轉版反而更差** —— 它把 pseudorandom generator 聽成 "subrandom generated"。字數與涵蓋範圍則幾乎相同。
+
+所以流程是：**先看字幕有沒有標點。有就直接用；沒有（或整份是 `[Music]`）才自轉。**

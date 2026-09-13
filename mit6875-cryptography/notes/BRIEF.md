@@ -76,6 +76,8 @@ MIT 沒有公開 Fall 2022 的錄影。
 | lec03 前半 hybrid argument / NBU | L6 `fdr6RKyjhEs` 後半 | ✅ 對得很好 |
 | lec03 後半 stateful→stateless / PRF | L7 `SmIQNWXkxeQ` 前半 | ✅ 對得很好，字幕品質差但可校正 |
 | lec04 PRF 安全性 / GGM / IND-CPA | L7 `SmIQNWXkxeQ` 後半（53:21 之後） | ✅ GGM 結構一致。⚠️ **lec04.pdf 是手寫講義，沒有文字層，要當圖讀** |
+| lec05 MAC / EUF-CMA 部分 | L15 `Kp2JqEuoTuI` 前半 | △ 只涵蓋 MAC 那段 |
+| lec05 challenge-response、學習理論、IND-CCA2 | — | ❌ **沒有影片**（L15、L16 都查過了） |
 
 **未驗證（推測，做之前要確認）：**
 
@@ -88,7 +90,7 @@ MIT 沒有公開 Fall 2022 的錄影。
 | L9–L10 Public Key Encryption | lec08–10 |
 | L11 Learning with Errors | lec19 |
 | L12–L14 Zero Knowledge | lec14–15 |
-| L15–L16 MACs, Digital Signatures | lec05, lec11–12 |
+| L15 後半 + L16 簽章 / CRHF | lec11–13 |
 | L17 Hash Functions, Random Oracles | lec12–13 |
 | L19 Oblivious Transfer, 2PC | lec21–22 |
 | L20 Garbled Circuits | lec25 |
@@ -106,7 +108,10 @@ Fall 2022 的 lec16（Fiat–Shamir）、lec17（succinct arguments）、lec18�
 - **會被限流**：連續抓幾支會拿到 HTTP 429。等 45 秒重試，通常第 3 次會過。
 - **有些投影片是手寫的**：`lec04.pdf` 沒有文字層，`pdftotext` 出來是 OCR 亂碼，要用 Read 的 `pages` 當圖讀。
   先跑 `pdftotext` 看一眼，輸出像亂碼就改讀圖。
-- **符號會跨堂衝突**：lec03 用 $\ell$/$m$/$n$ = 輸入/輸出/金鑰長度，lec04 用 $m$/$n$ = 輸入/輸出、$\lambda$ = 安全參數。
+- **符號會跨堂衝突**：lec03 和 lec05 用 $\ell$/$m$ = 輸入/輸出長度、$n$ = 安全參數；
+  lec04 用 $m$/$n$ = 輸入/輸出、$\lambda$ = 安全參數。**lec04 是特例。**
   每堂開頭先確認該堂的符號慣例，並在筆記裡標出與前一堂的差異。
+- **不是每堂都有影片**：lec05 有三段（challenge-response、學習理論、IND-CCA2）在 2018 那套裡完全沒有。
+  投影片有文字層時這不太要緊；先確認投影片完整度，再決定要花多少力氣找影片。
 - **先驗字幕品質**：檔案大小是最快的指標。80 分鐘的課正常是 400–600KB；只有 40KB 就是壞的。
   也可以用 `yt-dlp --list-subs` 看有沒有 `xx-orig` 這種軌 —— 有的話代表原始語音被誤判了。

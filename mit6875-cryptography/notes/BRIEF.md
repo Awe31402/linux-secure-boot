@@ -71,7 +71,7 @@ MIT 沒有公開 Fall 2022 的錄影。
 | Fall 2022 投影片 | 2018 影片 | 狀況 |
 |---|---|---|
 | lec01 Intro / perfect secrecy / OTP | L1 `jDsfV2ohFPs` | ✅ 內容一致，字幕差但可用 |
-| lec02 計算安全 / negligible / PRG | L2 `7YfYYIvyYb8` | ❌ **字幕壞掉**（語音被誤判成西班牙文，英文軌是亂碼）。且主題是 One-Way Functions |
+| lec02 計算安全 / negligible / 計算不可區分性 | L2 `7YfYYIvyYb8` 前半 | ✅ **YouTube 字幕壞掉，已自行用 Whisper 轉錄**，品質好。後半是 one-way functions（= lec06） |
 | lec02（PRG 定義、隨機性來源） | L6 `fdr6RKyjhEs` | ✅ 部分對應，字幕品質好 |
 | lec03 前半 hybrid argument / NBU | L6 `fdr6RKyjhEs` 後半 | ✅ 對得很好 |
 | lec03 後半 stateful→stateless / PRF | L7 `SmIQNWXkxeQ` 前半 | ✅ 對得很好，字幕品質差但可校正 |
@@ -115,3 +115,38 @@ Fall 2022 的 lec16（Fiat–Shamir）、lec17（succinct arguments）、lec18�
   投影片有文字層時這不太要緊；先確認投影片完整度，再決定要花多少力氣找影片。
 - **先驗字幕品質**：檔案大小是最快的指標。80 分鐘的課正常是 400–600KB；只有 40KB 就是壞的。
   也可以用 `yt-dlp --list-subs` 看有沒有 `xx-orig` 這種軌 —— 有的話代表原始語音被誤判了。
+
+## 附錄：自行轉錄逐字稿（字幕壞掉時）
+
+YouTube 的自動字幕品質差異很大，有些（如 L2）根本是壞的。這時自己轉，品質好非常多
+（有標點、有大小寫、術語錯誤少）。**lec02 就是這樣救回來的。**
+
+環境已經備妥（`~/.local`，沒有動系統 Python）：
+
+```bash
+# 1. 下載音訊
+yt-dlp --no-update -f bestaudio -x --audio-format mp3 --audio-quality 5 \
+       -o "LNN_audio.%(ext)s" "https://youtu.be/<VIDEO_ID>"
+
+# 2. 轉錄（RTX 4060 上 81 分鐘的課約 7 分鐘）
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+whisper LNN_audio.mp3 --model turbo --language en --device cuda \
+  --output_dir whisper_out --output_format all --verbose False \
+  --initial_prompt "MIT 6.875 Foundations of Cryptography, lecture by Vinod
+  Vaikuntanathan. Topics: one-way functions, pseudorandom generators, negligible
+  functions, security parameter, probabilistic polynomial time, adversary,
+  distinguisher, hardcore bits, Goldreich-Levin, discrete logarithm, factoring,
+  RSA, indistinguishability, reduction, XOR, ciphertext, plaintext."
+```
+
+然後用 `whisper_out/*.tsv`（欄位是 `start` / `end` / `text`，start 是毫秒）整理成帶時間點的段落。
+
+**踩過的坑：**
+
+- **不要用 `large-v3`。** 它載入時是 fp32（約 6GB+），8GB 的卡會 CUDA OOM。
+  **`turbo`** 是 large-v3 的蒸餾版，快很多、品質接近，穩穩放得下。
+- **`--initial_prompt` 很有效**，會大幅改善專有名詞。但 Whisper 仍會把 cryptography 聽成 "photography"。
+  **數學內容一律以投影片為準。**
+- **背景執行時不要把輸出接到 `tail`** —— `$?` 會抓到 `tail` 的結果，任務「成功」但其實爆了。
+  改成 `> run.log 2>&1` 再看 log。
+- 逐字稿留在 scratchpad，**不要 commit 進 repo**。

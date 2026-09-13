@@ -75,6 +75,7 @@ MIT 沒有公開 Fall 2022 的錄影。
 | lec02（PRG 定義、隨機性來源） | L6 `fdr6RKyjhEs` | ✅ 部分對應，字幕品質好 |
 | lec03 前半 hybrid argument / NBU | L6 `fdr6RKyjhEs` 後半 | ✅ 對得很好 |
 | lec03 後半 stateful→stateless / PRF | L7 `SmIQNWXkxeQ` 前半 | ✅ 對得很好，字幕品質差但可校正 |
+| lec04 PRF 安全性 / GGM / IND-CPA | L7 `SmIQNWXkxeQ` 後半（53:21 之後） | ✅ GGM 結構一致。⚠️ **lec04.pdf 是手寫講義，沒有文字層，要當圖讀** |
 
 **未驗證（推測，做之前要確認）：**
 
@@ -83,7 +84,6 @@ MIT 沒有公開 Fall 2022 的錄影。
 | L2 One-Way Functions | lec06 |
 | L3 Number Theory | lec07–08 |
 | L4–L5 Hardcore Bits | lec06–07（Goldreich–Levin） |
-| L7 後半（GGM 樹） | lec04 |
 | L8 Trapdoor Functions | lec10 |
 | L9–L10 Public Key Encryption | lec08–10 |
 | L11 Learning with Errors | lec19 |
@@ -104,5 +104,9 @@ Fall 2022 的 lec16（Fiat–Shamir）、lec17（succinct arguments）、lec18�
   但文字層會把動畫疊印的兩個版本混在一起、數學上下標也會壞 —— 公式一律回頭對照 PDF 的圖。
 - **抓字幕**：`yt-dlp --no-update --skip-download --write-auto-subs --sub-langs en --sub-format vtt`
 - **會被限流**：連續抓幾支會拿到 HTTP 429。等 45 秒重試，通常第 3 次會過。
+- **有些投影片是手寫的**：`lec04.pdf` 沒有文字層，`pdftotext` 出來是 OCR 亂碼，要用 Read 的 `pages` 當圖讀。
+  先跑 `pdftotext` 看一眼，輸出像亂碼就改讀圖。
+- **符號會跨堂衝突**：lec03 用 $\ell$/$m$/$n$ = 輸入/輸出/金鑰長度，lec04 用 $m$/$n$ = 輸入/輸出、$\lambda$ = 安全參數。
+  每堂開頭先確認該堂的符號慣例，並在筆記裡標出與前一堂的差異。
 - **先驗字幕品質**：檔案大小是最快的指標。80 分鐘的課正常是 400–600KB；只有 40KB 就是壞的。
   也可以用 `yt-dlp --list-subs` 看有沒有 `xx-orig` 這種軌 —— 有的話代表原始語音被誤判了。

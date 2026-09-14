@@ -78,14 +78,17 @@ MIT 沒有公開 Fall 2022 的錄影。
 | lec04 PRF 安全性 / GGM / IND-CPA | L7 `SmIQNWXkxeQ` 後半（53:21 之後） | ✅ GGM 結構一致。⚠️ **lec04.pdf 是手寫講義，沒有文字層，要當圖讀** |
 | lec05 MAC / EUF-CMA 部分 | L15 `Kp2JqEuoTuI` 前半 | △ 只涵蓋 MAC 那段 |
 | lec05 challenge-response、學習理論、IND-CCA2 | — | ❌ **沒有影片**（L15、L16 都查過了） |
+| lec06 OWF 定義 | L2 `7YfYYIvyYb8` `[43:40]`– | ✅ 自轉稿 |
+| lec06 Hardcore bits | L4 `H008GInK0xc` `[43:40]`–`[48:16]` | ✅ **自轉**（YouTube 版漏掉近三成內容） |
+| lec06 OWP ⇒ PRG | L6 `fdr6RKyjhEs` `[72:39]`– | ✅ YouTube 字幕即可 |
+| lec06 Goldreich–Levin | L5 `UuQuF0tcn1E` | ✅ 自轉稿 |
+| lec07 discrete log / MSB hardcore | L4 `H008GInK0xc` `[51:42]`– | ✅ 已有自轉稿，做 lec07 時直接用 |
 
 **未驗證（推測，做之前要確認）：**
 
 | 2018 影片 | 猜測對應的 Fall 2022 |
 |---|---|
-| L2 One-Way Functions | lec06 |
 | L3 Number Theory | lec07–08 |
-| L4–L5 Hardcore Bits | lec06–07（Goldreich–Levin） |
 | L8 Trapdoor Functions | lec10 |
 | L9–L10 Public Key Encryption | lec08–10 |
 | L11 Learning with Errors | lec19 |
@@ -150,6 +153,10 @@ whisper LNN_audio.mp3 --model turbo --language en --device cuda \
 - **背景執行時不要把輸出接到 `tail`** —— `$?` 會抓到 `tail` 的結果，任務「成功」但其實爆了。
   改成 `> run.log 2>&1` 再看 log。
 - 逐字稿留在 scratchpad，**不要 commit 進 repo**。
+- **Whisper 對人名特別弱**：Goldreich–Levin → "Goldrack"、Chernoff → "Chernobyl"。
+  數學名詞靠 `--initial_prompt` 救得回來，人名救不太回來 —— 一律用投影片校正。
+- **一堂課的材料可能散在四支影片裡**（lec06 就是 L2 + L4 + L5 + L6）。
+  先用 `grep -o -i` 統計關鍵術語出現次數，快速判斷哪支涵蓋哪一段，再去讀。
 
 **先判斷值不值得轉：**
 

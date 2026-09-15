@@ -82,7 +82,8 @@ MIT 沒有公開 Fall 2022 的錄影。
 | lec06 Hardcore bits | L4 `H008GInK0xc` `[43:40]`–`[48:16]` | ✅ **自轉**（YouTube 版漏掉近三成內容） |
 | lec06 OWP ⇒ PRG | L6 `fdr6RKyjhEs` `[72:39]`– | ✅ YouTube 字幕即可 |
 | lec06 Goldreich–Levin | L5 `UuQuF0tcn1E` | ✅ 自轉稿 |
-| lec07 discrete log / MSB hardcore | L4 `H008GInK0xc` `[51:42]`– | ✅ 已有自轉稿，做 lec07 時直接用 |
+| lec07 GL 真正的證明 | L5 `UuQuF0tcn1E` `[45:22]`–`[60:15]` | ✅ 自轉稿，對得很乾淨 |
+| lec08? discrete log / MSB hardcore | L4 `H008GInK0xc` `[51:42]`– | ✅ 已有自轉稿（**不在 lec07**，見下） |
 
 **未驗證（推測，做之前要確認）：**
 
@@ -102,6 +103,14 @@ MIT 沒有公開 Fall 2022 的錄影。
 
 Fall 2022 的 lec16（Fiat–Shamir）、lec17（succinct arguments）、lec18（lattices）、lec24（obfuscation）
 在 2018 那套裡**沒有對應影片**。
+
+## ⚠️ README.md 的課程索引不可盡信
+
+`README.md` 的 lecture index 說 lec07 含「primes and $\mathbb{Z}_p^*$; discrete log」，
+但 `lec07.pdf` **24 頁裡完全沒有數論** —— 整堂都是 Goldreich–Levin。
+那些數論內容應該在 lec08（它的索引寫著「group & number theory overview」）。
+
+**所以每堂開工前，先跑 `pdftotext` 看實際的投影片標題，不要照著 README 的索引找影片。**
 
 ## 附錄：操作筆記
 
